@@ -1964,6 +1964,25 @@ public:
     }
   }
 
+  /// Enters multiple tokens in the token stream to be lexed next.
+  ///
+  /// If BackTrack() is called afterwards, the tokens will remain at the
+  /// insertion point.
+  /// If \p IsReinject is true, resulting token will have Token::IsReinjected
+  /// flag set. See the flag documentation for details.
+  void EnterTokens(ArrayRef<Token> Toks, bool IsReinject) {
+    assert(!Toks.empty() && "requires at least one Token specified");
+    if (LexLevel) {
+      // It's not correct in general to enter caching lex mode while in the
+      // middle of a nested lexing action.
+      EnterTokenStream(Toks, true, IsReinject);
+    } else {
+      EnterCachingLexMode();
+      assert(IsReinject && "new tokens in the middle of cached stream");
+      CachedTokens.insert(CachedTokens.begin()+CachedLexPos, Toks.begin(), Toks.end());
+    }
+  }
+
   /// We notify the Preprocessor that if it is caching tokens (because
   /// backtrack is enabled) it should replace the most recent cached tokens
   /// with the given annotation token. This function has no effect if
@@ -1995,6 +2014,11 @@ public:
   /// Useful when a token needs to be split in smaller ones and CachedTokens
   /// most recent token must to be updated to reflect that.
   void ReplacePreviousCachedToken(ArrayRef<Token> NewToks);
+  
+  /// Remove the next N tokens in `CachedLexPos - 1` in CachedTokens.
+  ///
+  /// \param Bytes The number of tokens to remove.
+  void RemoveNextCachedToken(unsigned N);
 
   /// Replace the last token with an annotation token.
   ///
