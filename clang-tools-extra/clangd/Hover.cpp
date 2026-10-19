@@ -48,6 +48,8 @@
 #include "clang/Basic/Specifiers.h"
 #include "clang/Basic/TokenKinds.h"
 #include "clang/Index/IndexSymbol.h"
+#include "clang/Sema/Lookup.h"
+#include "clang/Sema/Overload.h"
 #include "clang/Tooling/Syntax/Tokens.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseSet.h"
@@ -426,8 +428,103 @@ static llvm::FormattedNumber printHex(const llvm::APSInt &V) {
   return llvm::format_hex(Bits, 0);
 }
 
-std::optional<std::string> printExprValue(const Expr *E,
-                                          const ASTContext &Ctx) {
+// NOTE: Modified `EvaluateAsStringImpl` from clang/lib/Sema/SemaDeclCXX.cpp
+template <typename ResultType> // ResultType is `APValue` or `std::string`
+static bool evaluateAsString(Sema &SemaRef, Expr *Message, ResultType &Result,
+                             ASTContext &Ctx, bool ErrorOnInvalidMessage) {
+  assert(Message);
+  assert(!Message->isTypeDependent() && !Message->isValueDependent() &&
+         "can't evaluate a dependant static assert message");
+
+  if (const auto *SL = dyn_cast<StringLiteral>(Message)) {
+    assert(SL->isUnevaluated() && "expected an unevaluated string");
+    if constexpr (std::is_same_v<APValue, ResultType>) {
+      Result =
+          APValue(APValue::UninitArray{}, SL->getLength(), SL->getLength());
+      const ConstantArrayType *CAT =
+          SemaRef.getASTContext().getAsConstantArrayType(SL->getType());
+      assert(CAT && "string literal isn't an array");
+      QualType CharType = CAT->getElementType();
+      llvm::APSInt Value(SemaRef.getASTContext().getTypeSize(CharType),
+                         CharType->isUnsignedIntegerType());
+      for (unsigned I = 0; I < SL->getLength(); I++) {
+        Value = SL->getCodeUnit(I);
+        Result.getArrayInitializedElt(I) = APValue(Value);
+      }
+    } else {
+      Result.assign(SL->getString().begin(), SL->getString().end());
+    }
+    return true;
+  }
+
+  SourceLocation Loc = Message->getBeginLoc();
+  QualType T = Message->getType().getNonReferenceType();
+  auto *RD = T->getAsCXXRecordDecl();
+  if (!RD)
+    return false;
+
+  auto FindMember = [&](StringRef Member) -> std::optional<LookupResult> {
+    DeclarationName DN = SemaRef.PP.getIdentifierInfo(Member);
+    LookupResult MemberLookup(SemaRef, DN, Loc, Sema::LookupMemberName);
+    SemaRef.LookupQualifiedName(MemberLookup, RD);
+    OverloadCandidateSet Candidates(MemberLookup.getNameLoc(),
+                                    OverloadCandidateSet::CSK_Normal);
+    if (MemberLookup.empty())
+      return std::nullopt;
+    return std::move(MemberLookup);
+  };
+
+  std::optional<LookupResult> SizeMember = FindMember("size");
+  std::optional<LookupResult> DataMember = FindMember("data");
+  if (!SizeMember || !DataMember)
+    return false;
+
+  auto BuildExpr = [&](LookupResult &LR) {
+    ExprResult Res = SemaRef.BuildMemberReferenceExpr(
+        Message, Message->getType(), Message->getBeginLoc(), false,
+        CXXScopeSpec(), SourceLocation(), nullptr, LR, nullptr, nullptr);
+    if (Res.isInvalid())
+      return ExprError();
+    Res = SemaRef.BuildCallExpr(nullptr, Res.get(), Loc, {}, Loc, nullptr,
+                                false, true);
+    if (Res.isInvalid())
+      return ExprError();
+    if (Res.get()->isTypeDependent() || Res.get()->isValueDependent())
+      return ExprError();
+    return SemaRef.TemporaryMaterializationConversion(Res.get());
+  };
+
+  ExprResult SizeE = BuildExpr(*SizeMember);
+  ExprResult DataE = BuildExpr(*DataMember);
+
+  QualType SizeT = SemaRef.Context.getSizeType();
+  QualType ConstCharPtr = SemaRef.Context.getPointerType(
+      SemaRef.Context.getConstType(SemaRef.Context.CharTy));
+
+  ExprResult EvaluatedSize =
+      SizeE.isInvalid()
+          ? ExprError()
+          : SemaRef.BuildConvertedConstantExpression(
+                SizeE.get(), SizeT, CCEKind::StaticAssertMessageSize);
+  if (EvaluatedSize.isInvalid())
+    return false;
+
+  ExprResult EvaluatedData =
+      DataE.isInvalid()
+          ? ExprError()
+          : SemaRef.BuildConvertedConstantExpression(
+                DataE.get(), ConstCharPtr, CCEKind::StaticAssertMessageData);
+  if (EvaluatedData.isInvalid())
+    return false;
+
+  Expr::EvalResult Status;
+  Message->EvaluateCharRangeAsString(Result, EvaluatedSize.get(),
+                                     EvaluatedData.get(), Ctx, Status);
+  return true;
+}
+
+std::optional<std::string> printExprValue(const Expr *E, const ASTContext &Ctx,
+                                          ParsedAST *AST = nullptr) {
   // InitListExpr has two forms, syntactic and semantic. They are the same thing
   // (refer to a same AST node) in most cases.
   // When they are different, RAV returns the syntactic form, and we should feed
@@ -450,8 +547,23 @@ std::optional<std::string> printExprValue(const Expr *E,
   if (E->isValueDependent() || !E->EvaluateAsRValue(Constant, Ctx) ||
       // Disable printing for record-types, as they are usually confusing and
       // might make clang crash while printing the expressions.
-      Constant.Val.isStruct() || Constant.Val.isUnion())
+      /* Constant.Val.isStruct() || */ Constant.Val.isUnion())
     return std::nullopt;
+
+  // Show string literal expression and string-like constants value.
+  if (Constant.Val.isStruct()) {
+    if (AST) {
+      auto &Sema = AST->getSema();
+      std::string Result;
+      if (evaluateAsString(Sema, const_cast<Expr *>(E), Result,
+                           AST->getASTContext(), false)) {
+        return '\"' + Result + '\"';
+      }
+    }
+
+    // NOTE: Only evaluate the string literal and string-like constants
+    return std::nullopt;
+  }
 
   // Show enums symbolically, not numerically like APValue::printPretty().
   if (T->isEnumeralType() && Constant.Val.isInt() &&
@@ -655,8 +767,8 @@ std::string synthesizeDocumentation(const ASTContext &Ctx,
 }
 
 /// Generate a \p Hover object given the declaration \p D.
-HoverInfo getHoverContents(const NamedDecl *D, const PrintingPolicy &PP,
-                           const SymbolIndex *Index,
+HoverInfo getHoverContents(const NamedDecl *D, ParsedAST &AST,
+                           const PrintingPolicy &PP, const SymbolIndex *Index,
                            const syntax::TokenBuffer &TB) {
   HoverInfo HI;
   auto &Ctx = D->getASTContext();
@@ -713,7 +825,7 @@ HoverInfo getHoverContents(const NamedDecl *D, const PrintingPolicy &PP,
   // Fill in value with evaluated initializer if possible.
   if (const auto *Var = dyn_cast<VarDecl>(D); Var && !Var->isInvalidDecl()) {
     if (const Expr *Init = Var->getInit())
-      HI.Value = printExprValue(Init, Ctx);
+      HI.Value = printExprValue(Init, Ctx, &AST);
   } else if (const auto *ECD = dyn_cast<EnumConstantDecl>(D)) {
     // Dependent enums (e.g. nested in template classes) don't have values yet.
     if (!ECD->getType()->isDependentType())
@@ -921,6 +1033,7 @@ HoverInfo getStringLiteralContents(const StringLiteral *SL,
 
   HI.Name = "string-literal";
   HI.Size = (SL->getLength() + 1) * SL->getCharByteWidth() * 8;
+  HI.Definition = "(" + SL->getType().getAsString(PP) + ")\"" + SL->getString().str() + "\"";
   HI.Type = SL->getType().getAsString(PP).c_str();
 
   return HI;
@@ -982,7 +1095,7 @@ std::optional<HoverInfo> getHoverContents(const SelectionTree::Node *N,
     HI = getThisExprHoverContents(CTE, AST.getASTContext(), PP);
   if (const PredefinedExpr *PE = dyn_cast<PredefinedExpr>(E))
     HI = getPredefinedExprHoverContents(*PE, AST.getASTContext(), PP);
-  // For expressions we currently print the type and the value, iff it is
+  // For expressions we currently print the type and the value, if it is
   // evaluatable.
   if (auto Val = printExprValue(E, AST.getASTContext())) {
     HI.emplace();
@@ -1007,7 +1120,7 @@ std::optional<HoverInfo> getHoverContents(const Attr *A, ParsedAST &AST) {
     llvm::raw_string_ostream OS(HI.Definition);
     A->printPretty(OS, AST.getASTContext().getPrintingPolicy());
   }
-  HI.Documentation = Attr::getDocumentation(A->getKind()).str();
+  HI.Documentation = Attr::getDocumentation(A->getKind());
   return HI;
 }
 
@@ -1381,7 +1494,7 @@ std::optional<HoverInfo> getHover(ParsedAST &AST, Position Pos,
                                             AST.getHeuristicResolver());
       if (const auto *DeclToUse = pickDeclToUse(Decls)) {
         HoverCountMetric.record(1, "decl");
-        HI = getHoverContents(DeclToUse, PP, Index, TB);
+        HI = getHoverContents(DeclToUse, AST, PP, Index, TB);
         // Layout info only shown when hovering on the field/class itself.
         if (DeclToUse == N->ASTNode.get<Decl>())
           addLayoutInfo(*DeclToUse, *HI);
