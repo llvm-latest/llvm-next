@@ -3552,6 +3552,14 @@ void Parser::ParseDeclarationSpecifiers(
         goto Attribute;
 
     DoneWithDeclSpec:
+      // If pending prefix attributes were not consumed by a tag type parser
+      // (e.g. due to a parse error), treat them as ordinary declaration
+      // attributes.
+      if (PendingTagTypeAttrs) {
+        attrs.takeAllAppendingFrom(*PendingTagTypeAttrs);
+        PendingTagTypeAttrs = nullptr;
+      }
+
       if (!AttrsLastTime)
         ProhibitAttributes(attrs);
       else {
@@ -5286,8 +5294,15 @@ void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
     return;
   }
 
-  // If attributes exist after tag, parse them.
   ParsedAttributes attrs(AttrFactory);
+
+  // If attributes exist before tag, parse them.
+  if (PendingTagTypeAttrs) {
+    attrs.takeAllPrependingFrom(*PendingTagTypeAttrs);
+    PendingTagTypeAttrs = nullptr;
+  }
+
+  // If attributes exist after tag, parse them.
   MaybeParseAttributes(PAKM_GNU | PAKM_Declspec | PAKM_CXX11, attrs);
 
   SourceLocation ScopedEnumKWLoc;

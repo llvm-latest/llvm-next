@@ -613,6 +613,8 @@ void Parser::Initialize() {
     PP.SetPoisonReason(Ident_AbnormalTermination,diag::err_seh___finally_block);
   }
 
+  PendingTagTypeAttrs = nullptr;
+
   Actions.Initialize();
 
   // Prime the lexer look-ahead.
@@ -1106,6 +1108,9 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
   DS.SetRangeEnd(DeclSpecAttrs.Range.getEnd());
   DS.takeAttributesAppendingingFrom(DeclSpecAttrs);
 
+  if (!Attrs.empty())
+    PendingTagTypeAttrs = &Attrs;
+
   ParsedTemplateInfo TemplateInfo;
   MaybeParseMicrosoftAttributes(DS.getAttributes());
   // Parse the common declaration-specifiers piece.
@@ -1125,22 +1130,26 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
     // [[attrib]]'
     SourceLocation CorrectLocationForAttributes{};
     TypeSpecifierType TKind = DS.getTypeSpecType();
-    if (DeclSpec::isDeclRep(TKind)) {
-      if (TKind == DeclSpec::TST_enum) {
-        if (const auto *ED = dyn_cast_or_null<EnumDecl>(DS.getRepAsDecl())) {
-          CorrectLocationForAttributes =
-              PP.getLocForEndOfToken(ED->getEnumKeyRange().getEnd());
-        }
-      }
-      if (CorrectLocationForAttributes.isInvalid()) {
-        const auto &Policy = Actions.getASTContext().getPrintingPolicy();
-        unsigned Offset =
-            StringRef(DeclSpec::getSpecifierName(TKind, Policy)).size();
-        CorrectLocationForAttributes =
-            DS.getTypeSpecTypeLoc().getLocWithOffset(Offset);
-      }
-    }
-    ProhibitAttributes(Attrs, CorrectLocationForAttributes);
+    // if (DeclSpec::isDeclRep(TKind)) {
+    //   if (TKind == DeclSpec::TST_enum) {
+    //     if (const auto *ED = dyn_cast_or_null<EnumDecl>(DS.getRepAsDecl())) {
+    //       CorrectLocationForAttributes =
+    //           PP.getLocForEndOfToken(ED->getEnumKeyRange().getEnd());
+    //     }
+    //   }
+    //   if (CorrectLocationForAttributes.isInvalid()) {
+    //     const auto &Policy = Actions.getASTContext().getPrintingPolicy();
+    //     unsigned Offset =
+    //         StringRef(DeclSpec::getSpecifierName(TKind, Policy)).size();
+    //     CorrectLocationForAttributes =
+    //         DS.getTypeSpecTypeLoc().getLocWithOffset(Offset);
+    //   }
+    // }
+
+    // NOTE: Disabled suggest for prefix attributes on tag type
+    if (!DeclSpec::isDeclRep(TKind))
+      ProhibitAttributes(Attrs, CorrectLocationForAttributes);
+
     ConsumeToken();
     RecordDecl *AnonRecord = nullptr;
     Decl *TheDecl = Actions.ParsedFreeStandingDeclSpec(

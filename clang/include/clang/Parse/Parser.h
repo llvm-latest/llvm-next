@@ -1527,6 +1527,9 @@ private:
   /// Factory object for creating ParsedAttr objects.
   AttributeFactory AttrFactory;
 
+  /// ‌Prefix attributes intended for the immediately following tag types.
+  ParsedAttributes *PendingTagTypeAttrs;
+
   /// TryAltiVecToken - Check for context-sensitive AltiVec identifier tokens,
   /// replacing them with the non-context-sensitive keywords.  This returns
   /// true if the token was replaced.

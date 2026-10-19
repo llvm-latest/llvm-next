@@ -2090,6 +2090,13 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
   SuppressAccessChecks diagsFromTag(*this, shouldDelayDiagsInTag);
 
   ParsedAttributes attrs(AttrFactory);
+
+  // If attributes exist before tag, parse them.
+  if (PendingTagTypeAttrs) {
+    attrs.takeAllPrependingFrom(*PendingTagTypeAttrs);
+    PendingTagTypeAttrs = nullptr;
+  }
+
   // If attributes exist after tag, parse them.
   for (;;) {
     MaybeParseAttributes(PAKM_CXX11 | PAKM_Declspec | PAKM_GNU, attrs);
