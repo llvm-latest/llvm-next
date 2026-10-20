@@ -201,8 +201,13 @@ Parser::DeclGroupPtrTy Parser::ParseDeclarationAfterTemplate(
   DS.SetRangeEnd(DeclSpecAttrs.Range.getEnd());
   DS.takeAttributesAppendingingFrom(DeclSpecAttrs);
 
-  ParseDeclarationSpecifiers(DS, TemplateInfo, AS,
-                             getDeclSpecContextFromDeclaratorContext(Context));
+  ParseDeclarationSpecifiers(
+      DS, TemplateInfo, AS,
+      getDeclSpecContextFromDeclaratorContext(Context),
+      /*LateAttrs=*/nullptr,
+      getImplicitTypenameContext(
+          getDeclSpecContextFromDeclaratorContext(Context)),
+      &DeclAttrs);
 
   if (Tok.is(tok::semi)) {
     ProhibitAttributes(DeclAttrs);

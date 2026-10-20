@@ -2058,7 +2058,8 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
                                  ParsedTemplateInfo &TemplateInfo,
                                  AccessSpecifier AS, bool EnteringContext,
                                  DeclSpecContext DSC,
-                                 ParsedAttributes &Attributes) {
+                                 ParsedAttributes &Attributes,
+                                 ParsedAttributes *PrefixAttrs) {
   DeclSpec::TST TagType;
   if (TagTokKind == tok::kw_struct)
     TagType = DeclSpec::TST_struct;
@@ -2446,6 +2447,23 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
   } else
     TUK = TagUseKind::Reference;
 
+  // A C++11 attribute-specifier-seq may precede the class-key. If this
+  // declaration actually declares the tag -- that is, it is a definition or a
+  // forward declaration -- the attributes appertain to the tag. Otherwise (in
+  // particular, for an elaborated-type-specifier) we leave them to the caller,
+  // where they appertain to the declaration.
+  bool HasPrefixAttrs =
+      getLangOpts().CPlusPlus && PrefixAttrs && !PrefixAttrs->empty();
+  SourceRange PrefixAttrsRange =
+      HasPrefixAttrs ? PrefixAttrs->Range : SourceRange();
+  if (HasPrefixAttrs && (TUK == TagUseKind::Definition ||
+                         TUK == TagUseKind::Declaration)) {
+    attrs.takeAllPrependingFrom(*PrefixAttrs);
+    // The attributes no longer belong to the decl-specifier-seq, so make sure
+    // they are not diagnosed as misplaced by the caller.
+    PrefixAttrs->Range = SourceRange();
+  }
+
   // Forbid misplaced attributes. In cases of a reference, we pass attributes
   // to caller to handle.
   if (TUK != TagUseKind::Reference) {
@@ -2725,6 +2743,19 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
 
   if (Result)
     Diag(StartLoc, DiagID) << PrevSpec;
+
+  // If a C++11 attribute-specifier-seq preceded the class-key and the same
+  // declaration also declares a variable (or a function) after the class
+  // definition, it is ambiguous whether the attributes appertain to the class
+  // or to the declared entity. Diagnose instead of silently picking one.
+  if (HasPrefixAttrs && TUK == TagUseKind::Definition &&
+      Tok.isNot(tok::semi) && isValidAfterTypeSpecifier(false))
+    Diag(PrefixAttrsRange.getBegin(),
+         diag::err_prefix_attribute_ambiguous_tag_decl)
+        << DeclSpec::getSpecifierName(TagType, Policy) << PrefixAttrsRange
+        << FixItHint::CreateInsertionFromRange(
+               AttrFixitLoc, CharSourceRange(PrefixAttrsRange, true))
+        << FixItHint::CreateRemoval(PrefixAttrsRange);
 
   // At this point, we've successfully parsed a class-specifier in 'definition'
   // form (e.g. "struct foo { int x; }".  While we could just return here, we're
@@ -3393,7 +3424,10 @@ Parser::DeclGroupPtrTy Parser::ParseCXXClassMemberDeclaration(
   SuppressAccessChecks diagsFromTag(*this, IsTemplateSpecOrInst);
 
   ParseDeclarationSpecifiers(DS, TemplateInfo, AS, DeclSpecContext::DSC_class,
-                             &CommonLateParsedAttrs);
+                             &CommonLateParsedAttrs,
+                             getImplicitTypenameContext(
+                                 DeclSpecContext::DSC_class),
+                             &DeclAttrs);
 
   if (IsTemplateSpecOrInst)
     diagsFromTag.done();

@@ -1992,7 +1992,9 @@ Parser::DeclGroupPtrTy Parser::ParseSimpleDeclaration(
 
   ParsedTemplateInfo TemplateInfo;
   DeclSpecContext DSContext = getDeclSpecContextFromDeclaratorContext(Context);
-  ParseDeclarationSpecifiers(DS, TemplateInfo, AS_none, DSContext);
+  ParseDeclarationSpecifiers(DS, TemplateInfo, AS_none, DSContext,
+                             /*LateAttrs=*/nullptr,
+                             getImplicitTypenameContext(DSContext), &DeclAttrs);
 
   // If we had a free-standing type definition with a missing semicolon, we
   // may get this far before the problem becomes obvious.
@@ -3483,7 +3485,8 @@ Parser::DiagnoseMissingSemiAfterTagDefinition(DeclSpec &DS, AccessSpecifier AS,
 void Parser::ParseDeclarationSpecifiers(
     DeclSpec &DS, ParsedTemplateInfo &TemplateInfo, AccessSpecifier AS,
     DeclSpecContext DSContext, LateParsedAttrList *LateAttrs,
-    ImplicitTypenameContext AllowImplicitTypename) {
+    ImplicitTypenameContext AllowImplicitTypename,
+    ParsedAttributes *LeadingAttrs) {
   if (DS.getSourceRange().isInvalid()) {
     // Start the range at the current token but make the end of the range
     // invalid.  This will make the entire range invalid unless we successfully
@@ -4709,8 +4712,14 @@ void Parser::ParseDeclarationSpecifiers(
       // To produce better diagnostic, we parse them when
       // parsing class specifier.
       ParsedAttributes Attributes(AttrFactory);
+      // Attributes parsed before the decl-specifier-seq may also precede the
+      // class-key; they take precedence over attributes that appeared inside
+      // the decl-specifier-seq.
+      ParsedAttributes *TagPrefixAttrs =
+          (LeadingAttrs && LeadingAttrs->Range.isValid()) ? LeadingAttrs : &attrs;
       ParseClassSpecifier(Kind, Loc, DS, TemplateInfo, AS,
-                          EnteringContext, DSContext, Attributes);
+                          EnteringContext, DSContext, Attributes,
+                          TagPrefixAttrs);
 
       // If there are attributes following class specifier,
       // take them over and handle them here.
@@ -4722,10 +4731,13 @@ void Parser::ParseDeclarationSpecifiers(
     }
 
     // enum-specifier:
-    case tok::kw_enum:
+    case tok::kw_enum: {
       ConsumeToken();
-      ParseEnumSpecifier(Loc, DS, TemplateInfo, AS, DSContext);
+      ParsedAttributes *TagPrefixAttrs =
+          (LeadingAttrs && LeadingAttrs->Range.isValid()) ? LeadingAttrs : &attrs;
+      ParseEnumSpecifier(Loc, DS, TemplateInfo, AS, DSContext, TagPrefixAttrs);
       continue;
+    }
 
     // cv-qualifier:
     case tok::kw_const:
@@ -5276,7 +5288,8 @@ void Parser::ParseStructUnionBody(SourceLocation RecordLoc,
 
 void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
                                 const ParsedTemplateInfo &TemplateInfo,
-                                AccessSpecifier AS, DeclSpecContext DSC) {
+                                AccessSpecifier AS, DeclSpecContext DSC,
+                                ParsedAttributes *PrefixAttrs) {
   // Parse the tag portion of this.
   if (Tok.is(tok::code_completion)) {
     // Code completion for an enum name.
@@ -5507,6 +5520,22 @@ void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
     TUK = TagUseKind::Reference;
   }
 
+  // A C++11 attribute-specifier-seq may precede the enum-key. If this
+  // declaration actually declares the enum -- that is, it is a definition or
+  // an opaque-enum-declaration -- the attributes appertain to the enum.
+  // Otherwise we leave them to the caller.
+  bool HasPrefixAttrs =
+      getLangOpts().CPlusPlus && PrefixAttrs && !PrefixAttrs->empty();
+  SourceRange PrefixAttrsRange =
+      HasPrefixAttrs ? PrefixAttrs->Range : SourceRange();
+  if (HasPrefixAttrs && (TUK == TagUseKind::Definition ||
+                         TUK == TagUseKind::Declaration)) {
+    attrs.takeAllPrependingFrom(*PrefixAttrs);
+    // The attributes no longer belong to the decl-specifier-seq, so make sure
+    // they are not diagnosed as misplaced by the caller.
+    PrefixAttrs->Range = SourceRange();
+  }
+
   bool IsElaboratedTypeSpecifier =
       TUK == TagUseKind::Reference || TUK == TagUseKind::Friend;
 
@@ -5653,6 +5682,23 @@ void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
       return;
     }
   }
+
+  // If a C++11 attribute-specifier-seq preceded the enum-key and the same
+  // declaration also declares a variable after the enum definition, it is
+  // ambiguous whether the attributes appertain to the enum or to the declared
+  // variable. Diagnose instead of silently picking one.
+  if (HasPrefixAttrs && TUK == TagUseKind::Definition &&
+      Tok.isNot(tok::semi) &&
+      isValidAfterTypeSpecifier(getCurScope()->isClassScope()))
+    Diag(PrefixAttrsRange.getBegin(),
+         diag::err_prefix_attribute_ambiguous_tag_decl)
+        << "enum" << PrefixAttrsRange
+        << FixItHint::CreateInsertionFromRange(
+               PP.getLocForEndOfToken(ScopedEnumKWLoc.isValid()
+                                          ? ScopedEnumKWLoc
+                                          : StartLoc),
+               CharSourceRange(PrefixAttrsRange, true))
+        << FixItHint::CreateRemoval(PrefixAttrsRange);
 
   // Annotation on_complete callbacks: after a definition's enumerators, or at
   // an opaque-enum-declaration (complete as declared). As for a class, the

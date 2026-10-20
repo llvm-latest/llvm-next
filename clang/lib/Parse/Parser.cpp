@@ -1109,8 +1109,10 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
   ParsedTemplateInfo TemplateInfo;
   MaybeParseMicrosoftAttributes(DS.getAttributes());
   // Parse the common declaration-specifiers piece.
-  ParseDeclarationSpecifiers(DS, TemplateInfo, AS,
-                             DeclSpecContext::DSC_top_level);
+  ParseDeclarationSpecifiers(
+      DS, TemplateInfo, AS, DeclSpecContext::DSC_top_level,
+      /*LateAttrs=*/nullptr,
+      getImplicitTypenameContext(DeclSpecContext::DSC_top_level), &Attrs);
 
   // If we had a free-standing type definition with a missing semicolon, we
   // may get this far before the problem becomes obvious.

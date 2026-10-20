@@ -1978,11 +1978,15 @@ private:
   ///       'friend': [C++ dcl.friend]
   ///       'constexpr': [C++0x dcl.constexpr]
   /// \endverbatim
+  /// \param LeadingAttrs C++11 attributes that were parsed before the
+  ///        decl-specifier-seq. They may appertain to a tag declaration if the
+  ///        tag specifier declares a tag (see ParseClassSpecifier).
   void
   ParseDeclarationSpecifiers(DeclSpec &DS, ParsedTemplateInfo &TemplateInfo,
                              AccessSpecifier AS, DeclSpecContext DSC,
                              LateParsedAttrList *LateAttrs,
-                             ImplicitTypenameContext AllowImplicitTypename);
+                             ImplicitTypenameContext AllowImplicitTypename,
+                             ParsedAttributes *LeadingAttrs = nullptr);
 
   /// Determine whether we're looking at something that might be a declarator
   /// in a simple-declaration. If it can't possibly be a declarator, maybe
@@ -2048,7 +2052,8 @@ private:
   ///
   void ParseEnumSpecifier(SourceLocation TagLoc, DeclSpec &DS,
                           const ParsedTemplateInfo &TemplateInfo,
-                          AccessSpecifier AS, DeclSpecContext DSC);
+                          AccessSpecifier AS, DeclSpecContext DSC,
+                          ParsedAttributes *PrefixAttrs = nullptr);
 
   /// ParseEnumBody - Parse a {} enclosed enumerator-list.
   /// \verbatim
@@ -3481,7 +3486,8 @@ private:
   void ParseClassSpecifier(tok::TokenKind TagTokKind, SourceLocation TagLoc,
                            DeclSpec &DS, ParsedTemplateInfo &TemplateInfo,
                            AccessSpecifier AS, bool EnteringContext,
-                           DeclSpecContext DSC, ParsedAttributes &Attributes);
+                           DeclSpecContext DSC, ParsedAttributes &Attributes,
+                           ParsedAttributes *PrefixAttrs = nullptr);
   void SkipCXXMemberSpecification(SourceLocation StartLoc,
                                   SourceLocation AttrFixitLoc, unsigned TagType,
                                   Decl *TagDecl);

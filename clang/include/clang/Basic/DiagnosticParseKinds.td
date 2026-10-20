@@ -836,6 +836,9 @@ def ext_cxx11_attr_placement : ExtWarn<
   InGroup<DiagGroup<"cxx-attribute-extension">>;
 def err_attributes_misplaced : Error<"misplaced attributes; expected attributes here">;
 def err_keyword_misplaced : Error<"misplaced %0; expected %0 here">;
+def err_prefix_attribute_ambiguous_tag_decl : Error<
+  "ambiguous attribute specifier sequence preceding '%0'; the attributes could "
+  "appertain to the %0 type or to the declared entity">;
 def err_l_square_l_square_not_attribute : Error<
   "C++11 only allows consecutive left square brackets when "
   "introducing an attribute">;
