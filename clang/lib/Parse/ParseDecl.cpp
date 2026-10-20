@@ -4714,9 +4714,10 @@ void Parser::ParseDeclarationSpecifiers(
       ParsedAttributes Attributes(AttrFactory);
       // Attributes parsed before the decl-specifier-seq may also precede the
       // class-key; they take precedence over attributes that appeared inside
-      // the decl-specifier-seq.
+      // the decl-specifier-seq. An empty attribute list (such as "[[]]") is
+      // not a tag attribute and is left to the caller's diagnostics.
       ParsedAttributes *TagPrefixAttrs =
-          (LeadingAttrs && LeadingAttrs->Range.isValid()) ? LeadingAttrs : &attrs;
+          (LeadingAttrs && !LeadingAttrs->empty()) ? LeadingAttrs : &attrs;
       ParseClassSpecifier(Kind, Loc, DS, TemplateInfo, AS,
                           EnteringContext, DSContext, Attributes,
                           TagPrefixAttrs);
@@ -4734,7 +4735,7 @@ void Parser::ParseDeclarationSpecifiers(
     case tok::kw_enum: {
       ConsumeToken();
       ParsedAttributes *TagPrefixAttrs =
-          (LeadingAttrs && LeadingAttrs->Range.isValid()) ? LeadingAttrs : &attrs;
+          (LeadingAttrs && !LeadingAttrs->empty()) ? LeadingAttrs : &attrs;
       ParseEnumSpecifier(Loc, DS, TemplateInfo, AS, DSContext, TagPrefixAttrs);
       continue;
     }
@@ -5524,8 +5525,9 @@ void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
   // declaration actually declares the enum -- that is, it is a definition or
   // an opaque-enum-declaration -- the attributes appertain to the enum.
   // Otherwise we leave them to the caller.
-  bool HasPrefixAttrs =
-      getLangOpts().CPlusPlus && PrefixAttrs && !PrefixAttrs->empty();
+  bool HasPrefixAttrs = getLangOpts().CPlusPlus && PrefixAttrs &&
+                        !PrefixAttrs->empty() &&
+                        hasOnlyCXX11Attributes(*PrefixAttrs);
   SourceRange PrefixAttrsRange =
       HasPrefixAttrs ? PrefixAttrs->Range : SourceRange();
   if (HasPrefixAttrs && (TUK == TagUseKind::Definition ||

@@ -177,7 +177,9 @@ void test_attribute_union(C c) {
 }
 
 struct AnonFields2 { 
-  [[clang::unsafe_buffer_usage]] 
+  // The attribute precedes the tag, so it appertains to the anonymous struct
+  // type rather than to any of its fields; it is not applicable to a record.
+  [[clang::unsafe_buffer_usage]] // expected-warning{{'unsafe_buffer_usage' attribute only applies to functions and non-static data members}}
   struct { 
     int a; 
   }; 

@@ -30,21 +30,14 @@ namespace test1 {
     __attribute__((visibility("hidden")))  __attribute__((aligned)) enum struct ES {}; // expected-warning{{attribute 'visibility' is ignored, place it after "enum struct" to apply attribute to type declaration}} \
     // expected-warning{{attribute 'aligned' is ignored, place it after "enum struct" to apply attribute to type declaration}}
 
-    // Also test [[]] attribute syntax. (On a non-nested declaration, these
-    // generate a hard "misplaced attributes" error, which we test for
-    // elsewhere.)
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] class E; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "class" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "class" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] struct F; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "struct" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "struct" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] union G; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "union" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "union" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum H {H}; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "enum" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "enum" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum class I {}; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "enum class" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "enum class" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum struct J {}; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "enum struct" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "enum struct" to apply attribute to type declaration}}
+    // Also test [[]] attribute syntax. These attributes precede the tag, so
+    // they appertain to the tag declaration; no warning is produced.
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] class E;
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] struct F;
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] union G;
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum H {H};
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum class I {};
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum struct J {};
   };
 }
 
@@ -64,11 +57,14 @@ namespace test2 {
     __attribute__((visibility("hidden")))  __attribute__((aligned)) enum class EC {} ec;
     __attribute__((visibility("hidden")))  __attribute__((aligned)) enum struct ES {} es;
 
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] class E {} e;
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] struct F {} f;
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] union G {} g;
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum H {H} h;
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum class I {} i;
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum struct J {} j;
+    // A C++11 attribute-specifier-seq before the tag is ambiguous when the
+    // declaration also declares a variable: the attributes could appertain to
+    // the tag or to the variable.
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] class E {} e; // expected-error{{ambiguous attribute specifier sequence preceding 'class'}}
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] struct F {} f; // expected-error{{ambiguous attribute specifier sequence preceding 'struct'}}
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] union G {} g; // expected-error{{ambiguous attribute specifier sequence preceding 'union'}}
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum H {H} h; // expected-error{{ambiguous attribute specifier sequence preceding 'enum'}}
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum class I {} i; // expected-error{{ambiguous attribute specifier sequence preceding 'enum'}}
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum struct J {} j; // expected-error{{ambiguous attribute specifier sequence preceding 'enum'}}
   };
 }

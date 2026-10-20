@@ -477,4 +477,38 @@ namespace P2361 {
 [[nodiscard("\123")]] int b(); // expected-error{{invalid escape sequence '\123' in an unevaluated string literal}}
 }
 
+namespace PrefixTagAttributes {
+// A C++11 attribute-specifier-seq may precede a tag specifier; the attributes
+// then appertain to the declared tag.
+[[clang::annotate("prefix")]] class Class {};
+[[clang::annotate("prefix")]] struct Struct {};
+[[clang::annotate("prefix")]] union Union {};
+[[clang::annotate("prefix")]] enum Enum { EnumValue };
+[[clang::annotate("prefix")]] enum class ScopedEnum { ScopedEnumValue };
+
+[[clang::annotate("prefix")]] class ForwardDeclaredClass;
+[[clang::annotate("prefix")]] struct ForwardDeclaredStruct;
+[[clang::annotate("prefix")]] union ForwardDeclaredUnion;
+[[clang::annotate("prefix")]] enum ForwardDeclaredEnum;
+
+struct Members {
+  [[clang::annotate("prefix")]] class NestedClass {};
+  [[clang::annotate("prefix")]] enum NestedEnum { NestedEnumValue };
+};
+
+void Function() {
+  [[clang::annotate("prefix")]] class LocalClass {};
+}
+} // namespace PrefixTagAttributes
+
+namespace PrefixTagAttributeAmbiguity {
+// The attributes could appertain either to the tag or to the entity declared
+// by the same declaration. Diagnose instead of silently picking one.
+[[clang::annotate("prefix")]] class Foo {} foo; // expected-error {{ambiguous attribute specifier sequence preceding 'class'}}
+[[clang::annotate("prefix")]] struct Bar {} *bar; // expected-error {{ambiguous attribute specifier sequence preceding 'struct'}}
+[[clang::annotate("prefix")]] union Baz {} baz; // expected-error {{ambiguous attribute specifier sequence preceding 'union'}}
+[[clang::annotate("prefix")]] enum Quux { QuuxValue } quux; // expected-error {{ambiguous attribute specifier sequence preceding 'enum'}}
+[[clang::annotate("prefix")]] enum class Corge { CorgeValue } corge; // expected-error {{ambiguous attribute specifier sequence preceding 'enum'}}
+} // namespace PrefixTagAttributeAmbiguity
+
 alignas(int) struct AlignAsAttribute {}; // expected-error {{misplaced attributes; expected attributes here}}

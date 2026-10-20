@@ -204,13 +204,13 @@ inline void StaticUnion() {
 
 namespace TagVariables {
 
-[[maybe_unused]] struct {
+struct {
     int _, _, _;  // expected-warning 2{{placeholder variables are incompatible with C++ standards before C++2c}}
-} a;
+} a [[maybe_unused]];
 
-[[maybe_unused]] union {
+union {
     int _, _, _; // expected-warning 2{{placeholder variables are incompatible with C++ standards before C++2c}}
-} b;
+} b [[maybe_unused]];
 
 }
 

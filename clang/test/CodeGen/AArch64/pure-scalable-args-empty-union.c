@@ -26,8 +26,7 @@ void f0(S0 *p) {
 // PST containing an empty union with `[[no_unique_address]]` - pass in registers.
 typedef struct {
    fvec32 x[4];
-   [[no_unique_address]]
-   union {} u;
+   union {} u [[no_unique_address]];
 } S1;
 
 extern "C" void use1(S1);

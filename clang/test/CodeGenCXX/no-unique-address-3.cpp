@@ -88,10 +88,10 @@ IntFieldClass K;
 // CHECK-NEXT:   BitFields:[
 // CHECK-NEXT: ]>
 class UnionClass : Empty {
-  [[no_unique_address]] union {
+  union {
     int I;
     char C;
-  } U;
+  } U [[no_unique_address]];
   int C;
 };
 UnionClass L;
@@ -109,7 +109,7 @@ UnionClass L;
 // CHECK-NEXT:   BitFields:[
 // CHECK-NEXT: ]>
 class EnumClass : Empty {
-  [[no_unique_address]] enum class E { X, Y, Z } A;
+  enum class E { X, Y, Z } A [[no_unique_address]];
   int C;
 };
 EnumClass M;
@@ -164,11 +164,11 @@ class FinalClass final : Empty {
 // CHECK-NEXT:           | [sizeof=4, dsize=4, align=2,
 // CHECK-NEXT:           |  nvsize=4, nvalign=2]
 class Union2Class : Empty {
-  [[no_unique_address]] union PaddedUnion {
+  union PaddedUnion {
   private:
     Empty A;
     alignas(2) char B;
-  } U;
+  } U [[no_unique_address]];
   char C;
 } P;
 
@@ -202,8 +202,8 @@ struct NotEmptyWithBitfield : Empty {
   int B : 1;
 };
 struct C {
-  [[no_unique_address]] union {
+  union {
     short C;
     [[no_unique_address]] NotEmptyWithBitfield A;
-  } U;
+  } U [[no_unique_address]];
 } Q;

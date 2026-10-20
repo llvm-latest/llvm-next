@@ -2452,8 +2452,9 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
   // forward declaration -- the attributes appertain to the tag. Otherwise (in
   // particular, for an elaborated-type-specifier) we leave them to the caller,
   // where they appertain to the declaration.
-  bool HasPrefixAttrs =
-      getLangOpts().CPlusPlus && PrefixAttrs && !PrefixAttrs->empty();
+  bool HasPrefixAttrs = getLangOpts().CPlusPlus && PrefixAttrs &&
+                        !PrefixAttrs->empty() &&
+                        hasOnlyCXX11Attributes(*PrefixAttrs);
   SourceRange PrefixAttrsRange =
       HasPrefixAttrs ? PrefixAttrs->Range : SourceRange();
   if (HasPrefixAttrs && (TUK == TagUseKind::Definition ||
