@@ -2751,8 +2751,7 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
   // or to the declared entity. Diagnose instead of silently picking one.
   if (HasPrefixAttrs && TUK == TagUseKind::Definition &&
       Tok.isNot(tok::semi) && isValidAfterTypeSpecifier(false))
-    Diag(PrefixAttrsRange.getBegin(),
-         diag::err_prefix_attribute_ambiguous_tag_decl)
+    Diag(AttrFixitLoc, diag::err_prefix_attribute_ambiguous_tag_decl)
         << DeclSpec::getSpecifierName(TagType, Policy) << PrefixAttrsRange
         << FixItHint::CreateInsertionFromRange(
                AttrFixitLoc, CharSourceRange(PrefixAttrsRange, true))

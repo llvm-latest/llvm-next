@@ -489,7 +489,7 @@ namespace PrefixTagAttributes {
 [[clang::annotate("prefix")]] class ForwardDeclaredClass;
 [[clang::annotate("prefix")]] struct ForwardDeclaredStruct;
 [[clang::annotate("prefix")]] union ForwardDeclaredUnion;
-[[clang::annotate("prefix")]] enum ForwardDeclaredEnum;
+[[clang::annotate("prefix")]] enum ForwardDeclaredEnum : int;
 
 struct Members {
   [[clang::annotate("prefix")]] class NestedClass {};

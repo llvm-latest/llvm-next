@@ -2060,7 +2060,7 @@ private:
   /// \c alignas, are not considered here.
   static bool hasOnlyCXX11Attributes(const ParsedAttributes &Attrs) {
     for (const ParsedAttr &PA : Attrs)
-      if (!PA.isCXX11Attribute())
+      if (PA.getSyntax() != AttributeCommonInfo::AS_CXX11)
         return false;
     return true;
   }

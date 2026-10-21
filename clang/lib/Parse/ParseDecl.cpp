@@ -5691,16 +5691,15 @@ void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
   // variable. Diagnose instead of silently picking one.
   if (HasPrefixAttrs && TUK == TagUseKind::Definition &&
       Tok.isNot(tok::semi) &&
-      isValidAfterTypeSpecifier(getCurScope()->isClassScope()))
-    Diag(PrefixAttrsRange.getBegin(),
-         diag::err_prefix_attribute_ambiguous_tag_decl)
+      isValidAfterTypeSpecifier(getCurScope()->isClassScope())) {
+    SourceLocation InsertionLoc = PP.getLocForEndOfToken(
+        ScopedEnumKWLoc.isValid() ? ScopedEnumKWLoc : StartLoc);
+    Diag(InsertionLoc, diag::err_prefix_attribute_ambiguous_tag_decl)
         << "enum" << PrefixAttrsRange
         << FixItHint::CreateInsertionFromRange(
-               PP.getLocForEndOfToken(ScopedEnumKWLoc.isValid()
-                                          ? ScopedEnumKWLoc
-                                          : StartLoc),
-               CharSourceRange(PrefixAttrsRange, true))
+               InsertionLoc, CharSourceRange(PrefixAttrsRange, true))
         << FixItHint::CreateRemoval(PrefixAttrsRange);
+  }
 
   // Annotation on_complete callbacks: after a definition's enumerators, or at
   // an opaque-enum-declaration (complete as declared). As for a class, the
