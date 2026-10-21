@@ -478,8 +478,9 @@ namespace P2361 {
 }
 
 namespace PrefixTagAttributes {
-// A C++11 attribute-specifier-seq may precede a tag specifier; the attributes
-// then appertain to the declared tag.
+// An attribute-specifier-seq may precede a tag specifier; the attributes
+// then appertain to the declared tag. Any attribute syntax is accepted here,
+// not only the C++11 "[[" "]]" form.
 [[clang::annotate("prefix")]] class Class {};
 [[clang::annotate("prefix")]] struct Struct {};
 [[clang::annotate("prefix")]] union Union {};
@@ -509,6 +510,17 @@ namespace PrefixTagAttributeAmbiguity {
 [[clang::annotate("prefix")]] union Baz {} baz; // expected-error {{ambiguous attribute specifier sequence preceding 'union'}}
 [[clang::annotate("prefix")]] enum Quux { QuuxValue } quux; // expected-error {{ambiguous attribute specifier sequence preceding 'enum'}}
 [[clang::annotate("prefix")]] enum class Corge { CorgeValue } corge; // expected-error {{ambiguous attribute specifier sequence preceding 'enum'}}
+
+// Attribute specifiers other than the C++11 "[[" "]]" form are treated the
+// same way.
+alignas(8) struct AlignAsTag {} alignAsTag; // expected-error {{ambiguous attribute specifier sequence preceding 'struct'}}
+alignas(8) enum AlignAsEnum { AlignAsEnumValue } alignAsEnum; // expected-error {{ambiguous attribute specifier sequence preceding 'enum'}}
 } // namespace PrefixTagAttributeAmbiguity
 
-alignas(int) struct AlignAsAttribute {}; // expected-error {{misplaced attributes; expected attributes here}}
+// alignas preceding a tag definition applies to the tag rather than being
+// diagnosed as misplaced.
+alignas(8) struct AlignAsAttribute {};
+static_assert(alignof(AlignAsAttribute) == 8, "alignas appertains to the tag");
+alignas(8) enum AlignAsAttributeEnum { AlignAsAttributeEnumValue };
+static_assert(alignof(AlignAsAttributeEnum) == 8,
+              "alignas appertains to the tag");

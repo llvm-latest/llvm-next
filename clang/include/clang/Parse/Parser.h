@@ -2055,16 +2055,6 @@ private:
                           AccessSpecifier AS, DeclSpecContext DSC,
                           ParsedAttributes *PrefixAttrs = nullptr);
 
-  /// Return true if all the given attributes were written using the C++11
-  /// attribute syntax ("[[...]]"). Other attribute specifiers, such as
-  /// \c alignas, are not considered here.
-  static bool hasOnlyCXX11Attributes(const ParsedAttributes &Attrs) {
-    for (const ParsedAttr &PA : Attrs)
-      if (PA.getSyntax() != AttributeCommonInfo::AS_CXX11)
-        return false;
-    return true;
-  }
-
   /// ParseEnumBody - Parse a {} enclosed enumerator-list.
   /// \verbatim
   ///       enumerator-list:

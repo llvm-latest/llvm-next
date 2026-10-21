@@ -573,6 +573,9 @@ TEST(ClangdAST, GetAttributes) {
   const char *Code = R"cpp(
     class X{};
     class [[nodiscard]] Y{};
+    [[nodiscard]] class Z{};
+    [[deprecated]] struct W{};
+    alignas(8) union V{};
     void f(int * a, int * __attribute__((nonnull)) b);
     void foo(bool c) {
       if (c)
@@ -586,6 +589,11 @@ TEST(ClangdAST, GetAttributes) {
   // Implicit attributes may be present (e.g. visibility on windows).
   ASSERT_THAT(DeclAttrs("X"), Each(implicitAttr()));
   ASSERT_THAT(DeclAttrs("Y"), Contains(attrKind(attr::WarnUnusedResult)));
+  // Attributes written before the tag appertain to the tag too.
+  ASSERT_THAT(DeclAttrs("Z"), Contains(attrKind(attr::WarnUnusedResult)));
+  ASSERT_THAT(DeclAttrs("W"), Contains(attrKind(attr::Deprecated)));
+  // Attribute specifiers other than the C++11 "[[" "]]" form behave the same.
+  ASSERT_THAT(DeclAttrs("V"), Contains(attrKind(attr::Aligned)));
   ASSERT_THAT(DeclAttrs("f"), Each(implicitAttr()));
   ASSERT_THAT(DeclAttrs("a"), Each(implicitAttr()));
   ASSERT_THAT(DeclAttrs("b"), Contains(attrKind(attr::NonNull)));

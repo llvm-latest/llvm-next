@@ -2447,14 +2447,13 @@ void Parser::ParseClassSpecifier(tok::TokenKind TagTokKind,
   } else
     TUK = TagUseKind::Reference;
 
-  // A C++11 attribute-specifier-seq may precede the class-key. If this
+  // An attribute-specifier-seq may precede the class-key. If this
   // declaration actually declares the tag -- that is, it is a definition or a
   // forward declaration -- the attributes appertain to the tag. Otherwise (in
   // particular, for an elaborated-type-specifier) we leave them to the caller,
   // where they appertain to the declaration.
-  bool HasPrefixAttrs = getLangOpts().CPlusPlus && PrefixAttrs &&
-                        !PrefixAttrs->empty() &&
-                        hasOnlyCXX11Attributes(*PrefixAttrs);
+  bool HasPrefixAttrs =
+      getLangOpts().CPlusPlus && PrefixAttrs && !PrefixAttrs->empty();
   SourceRange PrefixAttrsRange =
       HasPrefixAttrs ? PrefixAttrs->Range : SourceRange();
   if (HasPrefixAttrs && (TUK == TagUseKind::Definition ||

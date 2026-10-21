@@ -211,6 +211,21 @@ o]]();
                             "change 'fod' to 'foo'")))));
 }
 
+// An attribute-specifier-seq preceding a tag appertains to the tag, unless the
+// same declaration also declares a variable. In that case the attribute's
+// target is ambiguous, and clang rejects it with two fix-its.
+// Both fix-its must reach the editor so they can be offered as quick fixes.
+TEST(DiagnosticsTest, PrefixTagAttributeAmbiguity) {
+  TestTU TU = TestTU::withCode("[[nodiscard]] class Foo {} foo;");
+  TU.ExtraArgs = {"-std=c++17"};
+  auto Diags = TU.build().getDiagnostics();
+  ASSERT_THAT(Diags, SizeIs(1));
+  EXPECT_THAT(Diags.front().Message,
+              ::testing::HasSubstr("ambiguous attribute specifier sequence "
+                                   "preceding 'class'"));
+  EXPECT_THAT(Diags.front().Fixes, SizeIs(2));
+}
+
 // Verify that the -Wswitch case-not-covered diagnostic range covers the
 // whole expression. This is important because the "populate-switch" tweak
 // fires for the full expression range (see tweaks/PopulateSwitchTests.cpp).

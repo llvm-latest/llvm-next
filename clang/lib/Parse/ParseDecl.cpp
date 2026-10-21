@@ -5521,13 +5521,12 @@ void Parser::ParseEnumSpecifier(SourceLocation StartLoc, DeclSpec &DS,
     TUK = TagUseKind::Reference;
   }
 
-  // A C++11 attribute-specifier-seq may precede the enum-key. If this
+  // An attribute-specifier-seq may precede the enum-key. If this
   // declaration actually declares the enum -- that is, it is a definition or
   // an opaque-enum-declaration -- the attributes appertain to the enum.
   // Otherwise we leave them to the caller.
-  bool HasPrefixAttrs = getLangOpts().CPlusPlus && PrefixAttrs &&
-                        !PrefixAttrs->empty() &&
-                        hasOnlyCXX11Attributes(*PrefixAttrs);
+  bool HasPrefixAttrs =
+      getLangOpts().CPlusPlus && PrefixAttrs && !PrefixAttrs->empty();
   SourceRange PrefixAttrsRange =
       HasPrefixAttrs ? PrefixAttrs->Range : SourceRange();
   if (HasPrefixAttrs && (TUK == TagUseKind::Definition ||

@@ -3289,6 +3289,15 @@ TEST(Hover, All) {
          HI.Definition = "__attribute__((nonnull))";
          HI.Documentation = Attr::getDocumentation(attr::NonNull).str();
        }},
+      {R"cpp(
+         [[nodiscard^]] class Foo {};
+         )cpp",
+       [](HoverInfo &HI) {
+         HI.Name = "nodiscard";
+         HI.Kind = index::SymbolKind::Unknown; // FIXME: no suitable value
+         HI.Definition = "[[nodiscard]]";
+         HI.Documentation = Attr::getDocumentation(attr::WarnUnusedResult).str();
+       }},
       {
           R"cpp(
           namespace std {
