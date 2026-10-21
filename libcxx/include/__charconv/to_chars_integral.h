@@ -22,6 +22,7 @@
 #include <__system_error/errc.h>
 #include <__type_traits/enable_if.h>
 #include <__type_traits/integral_constant.h>
+#include <__type_traits/is_constant_evaluated.h>
 #include <__type_traits/is_integral.h>
 #include <__type_traits/is_same.h>
 #include <__type_traits/is_signed.h>
@@ -318,9 +319,20 @@ _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX14 char __hex_to_upper(c
 
 to_chars_result to_chars(char*, char*, bool, int = 10) = delete;
 
+// Clang provides builtins that convert integers of any width to text without spending the constant
+// evaluation step budget. They are only used during constant evaluation; at run time libc++ keeps
+// using the regular implementation below. Other compilers use the implementation as a fallback.
 template <typename _Tp, __enable_if_t<is_integral<_Tp>::value, int> = 0>
 inline _LIBCPP_CONSTEXPR_SINCE_CXX23 _LIBCPP_HIDE_FROM_ABI to_chars_result
 to_chars(char* __first, char* __last, _Tp __value) {
+#if __has_builtin(__builtin_to_chars)
+  if (std::__libcpp_is_constant_evaluated()) {
+    char* __end = __builtin_to_chars(__first, __last, __value, 10);
+    if (__end == nullptr)
+      return {__last, errc::value_too_large};
+    return {__end, errc(0)};
+  }
+#endif
   using _Type = __make_32_64_or_128_bit_t<_Tp>;
   static_assert(!is_same<_Type, void>::value, "unsupported integral type used in to_chars");
   return std::__to_chars_itoa(__first, __last, static_cast<_Type>(__value), is_signed<_Tp>());
@@ -331,6 +343,14 @@ inline _LIBCPP_CONSTEXPR_SINCE_CXX23 _LIBCPP_HIDE_FROM_ABI to_chars_result
 to_chars(char* __first, char* __last, _Tp __value, int __base) {
   _LIBCPP_ASSERT_UNCATEGORIZED(2 <= __base && __base <= 36, "base not in [2, 36]");
 
+#if __has_builtin(__builtin_to_chars)
+  if (std::__libcpp_is_constant_evaluated()) {
+    char* __end = __builtin_to_chars(__first, __last, __value, __base);
+    if (__end == nullptr)
+      return {__last, errc::value_too_large};
+    return {__end, errc(0)};
+  }
+#endif
   using _Type = __make_32_64_or_128_bit_t<_Tp>;
   return std::__to_chars_integral(__first, __last, static_cast<_Type>(__value), __base);
 }

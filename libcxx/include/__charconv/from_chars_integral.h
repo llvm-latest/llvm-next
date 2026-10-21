@@ -16,6 +16,7 @@
 #include <__config>
 #include <__system_error/errc.h>
 #include <__type_traits/enable_if.h>
+#include <__type_traits/is_constant_evaluated.h>
 #include <__type_traits/is_integral.h>
 #include <__type_traits/is_signed.h>
 #include <__type_traits/is_unsigned.h>
@@ -216,9 +217,21 @@ __from_chars_integral(const char* __first, const char* __last, _Tp& __value, int
   return std::__sign_combinator(__first, __last, __value, __from_chars_integral<__t>, __base);
 }
 
+// Clang provides builtins that convert text to integers of any width without spending the constant
+// evaluation step budget. They are only used during constant evaluation; at run time libc++ keeps
+// using the regular implementation below. Other compilers use the implementation as a fallback.
 template <typename _Tp, __enable_if_t<is_integral<_Tp>::value, int> = 0>
 inline _LIBCPP_CONSTEXPR_SINCE_CXX23 _LIBCPP_HIDE_FROM_ABI from_chars_result
 from_chars(const char* __first, const char* __last, _Tp& __value) {
+#if __has_builtin(__builtin_from_chars)
+  if (std::__libcpp_is_constant_evaluated()) {
+    int __ec            = 0;
+    const char* __ptr   = __builtin_from_chars(__first, __last, &__value, 10, &__ec);
+    if (__ec == 0)
+      return {__ptr, errc(0)};
+    return {__ptr, __ec == 1 ? errc::invalid_argument : errc::result_out_of_range};
+  }
+#endif
   return std::__from_chars_atoi(__first, __last, __value);
 }
 
@@ -226,6 +239,15 @@ template <typename _Tp, __enable_if_t<is_integral<_Tp>::value, int> = 0>
 inline _LIBCPP_CONSTEXPR_SINCE_CXX23 _LIBCPP_HIDE_FROM_ABI from_chars_result
 from_chars(const char* __first, const char* __last, _Tp& __value, int __base) {
   _LIBCPP_ASSERT_UNCATEGORIZED(2 <= __base && __base <= 36, "base not in [2, 36]");
+#if __has_builtin(__builtin_from_chars)
+  if (std::__libcpp_is_constant_evaluated()) {
+    int __ec          = 0;
+    const char* __ptr = __builtin_from_chars(__first, __last, &__value, __base, &__ec);
+    if (__ec == 0)
+      return {__ptr, errc(0)};
+    return {__ptr, __ec == 1 ? errc::invalid_argument : errc::result_out_of_range};
+  }
+#endif
   return std::__from_chars_integral(__first, __last, __value, __base);
 }
 #endif // _LIBCPP_STD_VER >= 17
