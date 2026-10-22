@@ -30,54 +30,16 @@ _LIBCPP_DIAGNOSTIC_POP
 
 #endif // _LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION < 15
 
-// The original version of floating-point to_chars was written by Microsoft and
-// contributed with the following license.
-
-// Copyright (c) Microsoft Corporation.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-
-// This implementation is dedicated to the memory of Mary and Thavatchai.
-
-to_chars_result to_chars(char* __first, char* __last, float __value) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Plain>(__first, __last, __value, chars_format{}, 0);
-}
-
-to_chars_result to_chars(char* __first, char* __last, double __value) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Plain>(__first, __last, __value, chars_format{}, 0);
-}
-
-to_chars_result to_chars(char* __first, char* __last, long double __value) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Plain>(
-      __first, __last, static_cast<double>(__value), chars_format{}, 0);
-}
-
-to_chars_result to_chars(char* __first, char* __last, float __value, chars_format __fmt) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Format_only>(__first, __last, __value, __fmt, 0);
-}
-
-to_chars_result to_chars(char* __first, char* __last, double __value, chars_format __fmt) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Format_only>(__first, __last, __value, __fmt, 0);
-}
-
-to_chars_result to_chars(char* __first, char* __last, long double __value, chars_format __fmt) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Format_only>(
-      __first, __last, static_cast<double>(__value), __fmt, 0);
-}
-
-to_chars_result to_chars(char* __first, char* __last, float __value, chars_format __fmt, int __precision) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Format_precision>(
-      __first, __last, __value, __fmt, __precision);
-}
-
-to_chars_result to_chars(char* __first, char* __last, double __value, chars_format __fmt, int __precision) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Format_precision>(
-      __first, __last, __value, __fmt, __precision);
-}
-
-to_chars_result to_chars(char* __first, char* __last, long double __value, chars_format __fmt, int __precision) {
-  return _Floating_to_chars<_Floating_to_chars_overload::_Format_precision>(
-      __first, __last, static_cast<double>(__value), __fmt, __precision);
-}
+// The to_chars overloads are now defined inline constexpr in the public header
+// <__charconv/to_chars_floating_point.h>. The definitions below were provided
+// here for ABI compatibility with older callers; they remain because the inline
+// definitions above are emitted per TU and do not replace a shared-library symbol.
+//
+// However, since they are now inline, out-of-line definitions would be
+// ill-formed (redefinition). The only exported out-of-line definitions that
+// remain below are the __from_chars_floating_point primary template and its
+// explicit instantiations, which still live here until the from_chars
+// implementation is also made fully header-only.
 
 template <class _Fp>
 __from_chars_result<_Fp> __from_chars_floating_point(

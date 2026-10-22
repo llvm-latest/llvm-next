@@ -95,7 +95,7 @@ struct _Floating_type_traits<double> {
 
 // FUNCTION to_chars (FLOATING-POINT TO STRING)
 template <class _Floating>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI
+[[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI
 to_chars_result _Floating_to_chars_hex_precision(
     char* _First, char* const _Last, const _Floating _Value, int _Precision) noexcept {
 
@@ -307,7 +307,8 @@ to_chars_result _Floating_to_chars_hex_precision(
 
             if (_Number_of_bits_remaining == 0) {
                 // We've finished printing _Adjusted_mantissa, so all remaining hexits are '0'.
-                std::memset(_First, '0', static_cast<size_t>(_Precision));
+                for (int __i = 0; __i < _Precision; ++__i)
+                    _First[__i] = '0';
                 _First += _Precision;
                 break;
             }
@@ -334,7 +335,7 @@ to_chars_result _Floating_to_chars_hex_precision(
 }
 
 template <class _Floating>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI
+[[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI
 to_chars_result _Floating_to_chars_hex_shortest(
     char* _First, char* const _Last, const _Floating _Value) noexcept {
 
@@ -359,7 +360,8 @@ to_chars_result _Floating_to_chars_hex_shortest(
             return {_Last, errc::value_too_large};
         }
 
-        std::memcpy(_First, _Str, _Len);
+        for (size_t __i = 0; __i < _Len; ++__i)
+            _First[__i] = _Str[__i];
 
         return {_First + _Len, errc{}};
     }
@@ -832,7 +834,7 @@ struct _General_precision_tables<double> {
 };
 
 template <class _Floating>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI
+[[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI
 to_chars_result _Floating_to_chars_general_precision(
     char* _First, char* const _Last, const _Floating _Value, int _Precision) noexcept {
 
@@ -968,7 +970,8 @@ to_chars_result _Floating_to_chars_general_precision(
     if (_Last - _First < _Significand_distance) {
         return {_Last, errc::value_too_large};
     }
-    std::memcpy(_First, _Significand_first, static_cast<size_t>(_Significand_distance));
+    for (ptrdiff_t __i = 0; __i < _Significand_distance; ++__i)
+        _First[__i] = _Significand_first[__i];
     _First += _Significand_distance;
 
     // Copy the exponent to the output range.
@@ -977,7 +980,8 @@ to_chars_result _Floating_to_chars_general_precision(
         if (_Last - _First < _Exponent_distance) {
             return {_Last, errc::value_too_large};
         }
-        std::memcpy(_First, _Exponent_first, static_cast<size_t>(_Exponent_distance));
+        for (ptrdiff_t __i = 0; __i < _Exponent_distance; ++__i)
+            _First[__i] = _Exponent_first[__i];
         _First += _Exponent_distance;
     }
 
@@ -987,7 +991,7 @@ to_chars_result _Floating_to_chars_general_precision(
 enum class _Floating_to_chars_overload { _Plain, _Format_only, _Format_precision };
 
 template <_Floating_to_chars_overload _Overload, class _Floating>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI
+[[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI
 to_chars_result _Floating_to_chars(
     char* _First, char* const _Last, _Floating _Value, const chars_format _Fmt, const int _Precision) noexcept {
 
@@ -1044,7 +1048,8 @@ to_chars_result _Floating_to_chars(
             return {_Last, errc::value_too_large};
         }
 
-        std::memcpy(_First, _Str, _Len);
+        for (size_t __i = 0; __i < _Len; ++__i)
+            _First[__i] = _Str[__i];
 
         return {_First + _Len, errc{}};
     }

@@ -58,21 +58,21 @@ template <class T> struct FloatConvertReturn {
   int error = 0;
 };
 
-LIBC_INLINE uint64_t low64(const UInt128 &num) {
+LIBC_CONSTEXPR_DEFAULT uint64_t low64(const UInt128 &num) {
   return static_cast<uint64_t>(num & 0xffffffffffffffff);
 }
 
-LIBC_INLINE uint64_t high64(const UInt128 &num) {
+LIBC_CONSTEXPR_DEFAULT uint64_t high64(const UInt128 &num) {
   return static_cast<uint64_t>(num >> 64);
 }
 
-template <class T> LIBC_INLINE void set_implicit_bit(fputil::FPBits<T> &) {
+template <class T> LIBC_CONSTEXPR_DEFAULT void set_implicit_bit(fputil::FPBits<T> &) {
   return;
 }
 
 #if defined(LIBC_TYPES_LONG_DOUBLE_IS_X86_FLOAT80)
 template <>
-LIBC_INLINE void
+LIBC_CONSTEXPR_DEFAULT void
 set_implicit_bit<long double>(fputil::FPBits<long double> &result) {
   result.set_implicit_bit(result.get_biased_exponent() != 0);
 }
@@ -87,7 +87,7 @@ set_implicit_bit<long double>(fputil::FPBits<long double> &result) {
 // (https://github.com/golang/go/blob/release-branch.go1.16/src/strconv/eisel_lemire.go#L25)
 // for some optimizations as well as handling 32 bit floats.
 template <class T>
-LIBC_INLINE cpp::optional<ExpandedFloat<T>>
+LIBC_CONSTEXPR_DEFAULT cpp::optional<ExpandedFloat<T>>
 eisel_lemire(ExpandedFloat<T> init_num,
              RoundDirection round = RoundDirection::Nearest) {
   using FPBits = typename fputil::FPBits<T>;
@@ -200,7 +200,7 @@ eisel_lemire(ExpandedFloat<T> init_num,
 #if !defined(LIBC_TYPES_LONG_DOUBLE_IS_FLOAT64) &&                             \
     !defined(LIBC_TYPES_LONG_DOUBLE_IS_DOUBLE_DOUBLE)
 template <>
-LIBC_INLINE cpp::optional<ExpandedFloat<long double>>
+LIBC_CONSTEXPR_DEFAULT cpp::optional<ExpandedFloat<long double>>
 eisel_lemire<long double>(ExpandedFloat<long double> init_num,
                           RoundDirection round) {
   using FPBits = typename fputil::FPBits<long double>;
@@ -336,7 +336,7 @@ constexpr int32_t NUM_POWERS_OF_TWO =
 // on the Simple Decimal Conversion algorithm by Nigel Tao, described at this
 // link: https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html
 template <typename T, typename CharType>
-LIBC_INLINE FloatConvertReturn<T> simple_decimal_conversion(
+LIBC_CONSTEXPR_DEFAULT FloatConvertReturn<T> simple_decimal_conversion(
     const CharType *__restrict numStart,
     const size_t num_len = cpp::numeric_limits<size_t>::max(),
     RoundDirection round = RoundDirection::Nearest) {
@@ -543,7 +543,7 @@ public:
 // exponents, but handles them quickly. This is an implementation of Clinger's
 // Fast Path, as described above.
 template <class T>
-LIBC_INLINE cpp::optional<ExpandedFloat<T>>
+LIBC_CONSTEXPR_DEFAULT cpp::optional<ExpandedFloat<T>>
 clinger_fast_path(ExpandedFloat<T> init_num,
                   RoundDirection round = RoundDirection::Nearest) {
   using FPBits = typename fputil::FPBits<T>;
@@ -634,15 +634,15 @@ clinger_fast_path(ExpandedFloat<T> init_num,
 // non-inf result for this size of float. The value is
 // log10(2^(exponent bias)).
 // The generic approximation uses the fact that log10(2^x) ~= x/3
-template <typename T> LIBC_INLINE constexpr int32_t get_upper_bound() {
+template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr int32_t get_upper_bound() {
   return fputil::FPBits<T>::EXP_BIAS / 3;
 }
 
-template <> LIBC_INLINE constexpr int32_t get_upper_bound<float>() {
+template <> LIBC_CONSTEXPR_DEFAULT constexpr int32_t get_upper_bound<float>() {
   return 39;
 }
 
-template <> LIBC_INLINE constexpr int32_t get_upper_bound<double>() {
+template <> LIBC_CONSTEXPR_DEFAULT constexpr int32_t get_upper_bound<double>() {
   return 309;
 }
 
@@ -654,18 +654,18 @@ template <> LIBC_INLINE constexpr int32_t get_upper_bound<double>() {
 // low base 10 exponent with a very high intermediate mantissa can cancel each
 // other out, and subnormal numbers allow for the result to be at the very low
 // end of the final mantissa.
-template <typename T> LIBC_INLINE constexpr int32_t get_lower_bound() {
+template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr int32_t get_lower_bound() {
   using FPBits = typename fputil::FPBits<T>;
   return -((FPBits::EXP_BIAS +
             static_cast<int32_t>(FPBits::FRACTION_LEN + FPBits::STORAGE_LEN)) /
            3);
 }
 
-template <> LIBC_INLINE constexpr int32_t get_lower_bound<float>() {
+template <> LIBC_CONSTEXPR_DEFAULT constexpr int32_t get_lower_bound<float>() {
   return -(39 + 6 + 10);
 }
 
-template <> LIBC_INLINE constexpr int32_t get_lower_bound<double>() {
+template <> LIBC_CONSTEXPR_DEFAULT constexpr int32_t get_lower_bound<double>() {
   return -(309 + 15 + 20);
 }
 
@@ -679,7 +679,7 @@ template <> LIBC_INLINE constexpr int32_t get_lower_bound<double>() {
 // then if that fails then we fall back to a more accurate algorithm for
 // accuracy.
 template <typename T, typename CharType>
-LIBC_INLINE FloatConvertReturn<T> decimal_exp_to_float(
+LIBC_CONSTEXPR_DEFAULT FloatConvertReturn<T> decimal_exp_to_float(
     ExpandedFloat<T> init_num, [[maybe_unused]] bool truncated,
     RoundDirection round, const CharType *__restrict numStart,
     const size_t num_len = cpp::numeric_limits<size_t>::max()) {
@@ -762,7 +762,7 @@ LIBC_INLINE FloatConvertReturn<T> decimal_exp_to_float(
 // form, this is mostly just shifting and rounding. This is used for hexadecimal
 // numbers since a base 16 exponent multiplied by 4 is the base 2 exponent.
 template <class T>
-LIBC_INLINE FloatConvertReturn<T> binary_exp_to_float(ExpandedFloat<T> init_num,
+LIBC_CONSTEXPR_DEFAULT FloatConvertReturn<T> binary_exp_to_float(ExpandedFloat<T> init_num,
                                                       bool truncated,
                                                       RoundDirection round) {
   using FPBits = typename fputil::FPBits<T>;
@@ -863,7 +863,7 @@ LIBC_INLINE FloatConvertReturn<T> binary_exp_to_float(ExpandedFloat<T> init_num,
 // Checks if the first characters of the string pointer are the start of a
 // hexadecimal floating point number. Does not advance the string pointer.
 template <typename CharType>
-LIBC_INLINE static bool is_float_hex_start(const CharType *__restrict src) {
+static LIBC_CONSTEXPR_DEFAULT bool is_float_hex_start(const CharType *__restrict src) {
   if (!is_char_or_wchar(src[0], '0', L'0') ||
       !is_char_or_wchar(tolower(src[1]), 'x', L'x')) {
     return false;
@@ -878,7 +878,7 @@ LIBC_INLINE static bool is_float_hex_start(const CharType *__restrict src) {
 // Verifies that first prefix_len characters of str, when lowercased, match the
 // specified prefix.
 template <typename CharType>
-LIBC_INLINE static bool tolower_starts_with(const CharType *str,
+static LIBC_CONSTEXPR_DEFAULT bool tolower_starts_with(const CharType *str,
                                             size_t prefix_len,
                                             const CharType *prefix) {
   for (size_t i = 0; i < prefix_len; ++i) {
@@ -890,7 +890,7 @@ LIBC_INLINE static bool tolower_starts_with(const CharType *str,
 
 // Attempts parsing a decimal floating point number at the start of the string.
 template <typename T, typename CharType>
-LIBC_INLINE static StrToNumResult<ExpandedFloat<T>>
+static LIBC_CONSTEXPR_DEFAULT StrToNumResult<ExpandedFloat<T>>
 decimal_string_to_float(const CharType *__restrict src, RoundDirection round) {
   using FPBits = typename fputil::FPBits<T>;
   using StorageType = typename FPBits::StorageType;
@@ -991,7 +991,7 @@ decimal_string_to_float(const CharType *__restrict src, RoundDirection round) {
 // Attempts parsing a hexadecimal floating point number at the start of the
 // string.
 template <typename T, typename CharType>
-LIBC_INLINE static StrToNumResult<ExpandedFloat<T>>
+static LIBC_CONSTEXPR_DEFAULT StrToNumResult<ExpandedFloat<T>>
 hexadecimal_string_to_float(const CharType *__restrict src,
                             RoundDirection round) {
   using FPBits = typename fputil::FPBits<T>;
@@ -1093,7 +1093,7 @@ hexadecimal_string_to_float(const CharType *__restrict src,
 }
 
 template <typename T, typename CharType>
-LIBC_INLINE constexpr typename fputil::FPBits<T>::StorageType
+LIBC_CONSTEXPR_DEFAULT constexpr typename fputil::FPBits<T>::StorageType
 nan_mantissa_from_ncharseq(const CharType *str, size_t len) {
   using FPBits = typename fputil::FPBits<T>;
   using StorageType = typename FPBits::StorageType;
@@ -1118,7 +1118,7 @@ nan_mantissa_from_ncharseq(const CharType *str, size_t len) {
 // TODO: Add src_len member to match strtointeger.
 // TODO: Next, move from char* and length to string_view
 template <typename T, typename CharType>
-LIBC_INLINE StrToNumResult<T>
+LIBC_CONSTEXPR_DEFAULT StrToNumResult<T>
 strtofloatingpoint(const CharType *__restrict src) {
   using FPBits = typename fputil::FPBits<T>;
   using StorageType = typename FPBits::StorageType;
@@ -1222,7 +1222,7 @@ strtofloatingpoint(const CharType *__restrict src) {
 }
 
 template <class T>
-LIBC_INLINE constexpr StrToNumResult<T> strtonan(const char *arg) {
+LIBC_CONSTEXPR_DEFAULT constexpr StrToNumResult<T> strtonan(const char *arg) {
   using FPBits = typename fputil::FPBits<T>;
   using StorageType = typename FPBits::StorageType;
 

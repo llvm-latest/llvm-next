@@ -33,7 +33,7 @@ namespace internal {
 // Returns the idx to the first character in src that is not a whitespace
 // character (as determined by isspace())
 template <typename CharType>
-LIBC_INLINE constexpr size_t
+LIBC_CONSTEXPR_DEFAULT constexpr size_t
 first_non_whitespace(const CharType *__restrict src,
                      size_t src_len = cpp::numeric_limits<size_t>::max()) {
   size_t src_cur = 0;
@@ -45,7 +45,7 @@ first_non_whitespace(const CharType *__restrict src,
 // Returns +1, -1, or 0 if 'src' starts with (respectively)
 // plus sign, minus sign, or neither.
 template <typename CharType>
-LIBC_INLINE static int get_sign(const CharType *__restrict src) {
+static LIBC_CONSTEXPR_DEFAULT int get_sign(const CharType *__restrict src) {
   if (is_char_or_wchar(src[0], '+', L'+'))
     return 1;
   if (is_char_or_wchar(src[0], '-', L'-'))
@@ -56,7 +56,7 @@ LIBC_INLINE static int get_sign(const CharType *__restrict src) {
 // checks if the next 3 characters of the string pointer are the start of a
 // hexadecimal number. Does not advance the string pointer.
 template <typename CharType>
-LIBC_INLINE static bool is_hex_start(const CharType *__restrict src,
+static LIBC_CONSTEXPR_DEFAULT bool is_hex_start(const CharType *__restrict src,
                                      size_t src_len) {
   if (src_len < 3)
     return false;
@@ -68,7 +68,7 @@ LIBC_INLINE static bool is_hex_start(const CharType *__restrict src,
 // Takes the address of the string pointer and parses the base from the start of
 // it.
 template <typename CharType>
-LIBC_INLINE static int infer_base(const CharType *__restrict src,
+static LIBC_CONSTEXPR_DEFAULT int infer_base(const CharType *__restrict src,
                                   size_t src_len) {
   // A hexadecimal number is defined as "the prefix 0x or 0X followed by a
   // sequence of the decimal digits and the letters a (or A) through f (or F)
@@ -94,7 +94,7 @@ LIBC_INLINE static int infer_base(const CharType *__restrict src,
 // Takes a pointer to a string and the base to convert to. This function is used
 // as the backend for all of the string to int functions.
 template <typename T, typename CharType>
-LIBC_INLINE constexpr StrToNumResult<T>
+LIBC_CONSTEXPR_DEFAULT constexpr StrToNumResult<T>
 strtointeger(const CharType *__restrict src, int base,
              const size_t src_len = cpp::numeric_limits<size_t>::max()) {
   using ResultType = make_integral_or_big_int_unsigned_t<T>;

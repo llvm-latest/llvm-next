@@ -11,7 +11,6 @@
 
 #include <__assert>
 #include <__config>
-#include <cctype>
 #include <charconv>
 #include <concepts>
 #include <limits>
@@ -19,6 +18,23 @@
 // Make sure we use libc++'s assertion machinery within the shared code we use
 // from LLVM libc.
 #define LIBC_ASSERT(cond) _LIBCPP_ASSERT((cond), _LIBCPP_TOSTRING(cond))
+
+// Constexpr ASCII-only ctype helpers (no locale dependency, usable at compile time).
+inline constexpr char __ascii_tolower(char __c) noexcept {
+  return (__c >= 'A' && __c <= 'Z') ? static_cast<char>(__c + ('a' - 'A')) : __c;
+}
+inline constexpr bool __ascii_isdigit(char __c) noexcept {
+  return __c >= '0' && __c <= '9';
+}
+inline constexpr bool __ascii_isxdigit(char __c) noexcept {
+  return __ascii_isdigit(__c) || (__c >= 'a' && __c <= 'f') || (__c >= 'A' && __c <= 'F');
+}
+inline constexpr bool __ascii_isalnum(char __c) noexcept {
+  return __ascii_isdigit(__c) || (__c >= 'a' && __c <= 'z') || (__c >= 'A' && __c <= 'Z');
+}
+inline constexpr bool __ascii_isspace(char __c) noexcept {
+  return __c == ' ' || __c == '\f' || __c == '\n' || __c == '\r' || __c == '\t' || __c == '\v';
+}
 
 // These headers are in the shared LLVM-libc header library.
 #include "shared/fp_bits.h"
@@ -41,12 +57,12 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 //   the initial I character.
 // - __negative whether a valid string represents -inf or +inf.
 template <floating_point _Fp>
-__from_chars_result<_Fp>
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __from_chars_result<_Fp>
 __from_chars_floating_point_inf(const char* const __first, const char* __last, const char* __ptr, bool __negative) {
   if (__last - __ptr < 2) [[unlikely]]
     return {_Fp{0}, 0, errc::invalid_argument};
 
-  if (std::tolower(__ptr[0]) != 'n' || std::tolower(__ptr[1]) != 'f') [[unlikely]]
+  if (__ascii_tolower(__ptr[0]) != 'n' || __ascii_tolower(__ptr[1]) != 'f') [[unlikely]]
     return {_Fp{0}, 0, errc::invalid_argument};
 
   __ptr += 2;
@@ -57,11 +73,11 @@ __from_chars_floating_point_inf(const char* const __first, const char* __last, c
   // INITZ.
 
   if (__last - __ptr >= 5              //
-      && std::tolower(__ptr[0]) == 'i' //
-      && std::tolower(__ptr[1]) == 'n' //
-      && std::tolower(__ptr[2]) == 'i' //
-      && std::tolower(__ptr[3]) == 't' //
-      && std::tolower(__ptr[4]) == 'y')
+      && __ascii_tolower(__ptr[0]) == 'i' //
+      && __ascii_tolower(__ptr[1]) == 'n' //
+      && __ascii_tolower(__ptr[2]) == 'i' //
+      && __ascii_tolower(__ptr[3]) == 't' //
+      && __ascii_tolower(__ptr[4]) == 'y')
     __ptr += 5;
 
   if constexpr (numeric_limits<_Fp>::has_infinity) {
@@ -85,12 +101,12 @@ __from_chars_floating_point_inf(const char* const __first, const char* __last, c
 //   the initial N character.
 // - __negative whether a valid string represents -nan or +nan.
 template <floating_point _Fp>
-__from_chars_result<_Fp>
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __from_chars_result<_Fp>
 __from_chars_floating_point_nan(const char* const __first, const char* __last, const char* __ptr, bool __negative) {
   if (__last - __ptr < 2) [[unlikely]]
     return {_Fp{0}, 0, errc::invalid_argument};
 
-  if (std::tolower(__ptr[0]) != 'a' || std::tolower(__ptr[1]) != 'n') [[unlikely]]
+  if (__ascii_tolower(__ptr[0]) != 'a' || __ascii_tolower(__ptr[1]) != 'n') [[unlikely]]
     return {_Fp{0}, 0, errc::invalid_argument};
 
   __ptr += 2;
@@ -106,7 +122,7 @@ __from_chars_floating_point_nan(const char* const __first, const char* __last, c
         __ptr += __offset + 1;
         break;
       }
-      if (__ptr[__offset] != '_' && !std::isalnum(__ptr[__offset]))
+      if (__ptr[__offset] != '_' && !__ascii_isalnum(__ptr[__offset]))
         break;
       ++__offset;
     } while (__ptr + __offset != __last);
@@ -133,17 +149,17 @@ struct __fractional_constant_result {
 // - __offset where to start parsing. The input can have an optional sign, the
 //   offset starts after this sign.
 template <class _Tp>
-__fractional_constant_result<_Tp> __parse_fractional_hex_constant(const char* __input, size_t __n, size_t __offset) {
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __fractional_constant_result<_Tp> __parse_fractional_hex_constant(const char* __input, size_t __n, size_t __offset) {
   __fractional_constant_result<_Tp> __result;
 
   const _Tp __mantissa_truncate_threshold = numeric_limits<_Tp>::max() / 16;
   bool __fraction                         = false;
   for (; __offset < __n; ++__offset) {
-    if (std::isxdigit(__input[__offset])) {
+    if (__ascii_isxdigit(__input[__offset])) {
       __result.__is_valid = true;
 
       uint32_t __digit = __input[__offset] - '0';
-      switch (std::tolower(__input[__offset])) {
+      switch (__ascii_tolower(__input[__offset])) {
       case 'a':
         __digit = 10;
         break;
@@ -197,10 +213,10 @@ struct __exponent_result {
 // __offset, 0, false. This allows using the results unconditionally, the
 // __present is important for the scientific notation, where the value is
 // mandatory.
-static __exponent_result __parse_exponent(const char* __input, size_t __n, size_t __offset, char __marker) {
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __exponent_result __parse_exponent(const char* __input, size_t __n, size_t __offset, char __marker) {
   if (__offset + 1 < __n &&                          // an exponent always needs at least one digit.
-      std::tolower(__input[__offset]) == __marker && //
-      !std::isspace(__input[__offset + 1])           // leading whitespace is not allowed.
+      __ascii_tolower(__input[__offset]) == __marker && //
+      !__ascii_isspace(__input[__offset + 1])           // leading whitespace is not allowed.
   ) {
     ++__offset;
     LIBC_NAMESPACE::shared::StrToNumResult<int32_t> __e =
@@ -217,7 +233,7 @@ static __exponent_result __parse_exponent(const char* __input, size_t __n, size_
 }
 
 // Here we do this operation as int64 to avoid overflow.
-static int32_t __merge_exponents(int64_t __fractional, int64_t __exponent, int __max_biased_exponent) {
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 int32_t __merge_exponents(int64_t __fractional, int64_t __exponent, int __max_biased_exponent) {
   int64_t __sum = __fractional + __exponent;
 
   if (__sum > __max_biased_exponent)
@@ -230,7 +246,7 @@ static int32_t __merge_exponents(int64_t __fractional, int64_t __exponent, int _
 }
 
 template <class _Fp, class _Tp>
-__from_chars_result<_Fp>
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __from_chars_result<_Fp>
 __calculate_result(_Tp __mantissa, int __exponent, bool __negative, __from_chars_result<_Fp> __result) {
   auto __r = LIBC_NAMESPACE::shared::FPBits<_Fp>();
   __r.set_mantissa(__mantissa);
@@ -279,7 +295,7 @@ __calculate_result(_Tp __mantissa, int __exponent, bool __negative, __from_chars
 // the similar parts are all in helper functions. So the amount of code
 // duplication is minimal.
 template <floating_point _Fp>
-__from_chars_result<_Fp>
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __from_chars_result<_Fp>
 __from_chars_floating_point_hex(const char* const __first, const char* __last, const char* __ptr, bool __negative) {
   size_t __n         = __last - __first;
   ptrdiff_t __offset = __ptr - __first;
@@ -316,14 +332,14 @@ __from_chars_floating_point_hex(const char* const __first, const char* __last, c
 // - __offset where to start parsing. The input can have an optional sign, the
 //   offset starts after this sign.
 template <class _Tp>
-__fractional_constant_result<_Tp>
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __fractional_constant_result<_Tp>
 __parse_fractional_decimal_constant(const char* __input, ptrdiff_t __n, ptrdiff_t __offset) {
   __fractional_constant_result<_Tp> __result;
 
   const _Tp __mantissa_truncate_threshold = numeric_limits<_Tp>::max() / 10;
   bool __fraction                         = false;
   for (; __offset < __n; ++__offset) {
-    if (std::isdigit(__input[__offset])) {
+    if (__ascii_isdigit(__input[__offset])) {
       __result.__is_valid = true;
 
       uint32_t __digit = __input[__offset] - '0';
@@ -358,7 +374,7 @@ __parse_fractional_decimal_constant(const char* __input, ptrdiff_t __n, ptrdiff_
 // __ptr the start of the buffer to parse. This is after the optional sign character.
 // __negative should __value be set to a negative value?
 template <floating_point _Fp>
-__from_chars_result<_Fp> __from_chars_floating_point_decimal(
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __from_chars_result<_Fp> __from_chars_floating_point_decimal(
     const char* const __first, const char* __last, chars_format __fmt, const char* __ptr, bool __negative) {
   ptrdiff_t __n      = __last - __first;
   ptrdiff_t __offset = __ptr - __first;
@@ -412,7 +428,7 @@ __from_chars_result<_Fp> __from_chars_floating_point_decimal(
 }
 
 template <floating_point _Fp>
-__from_chars_result<_Fp>
+inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __from_chars_result<_Fp>
 __from_chars_floating_point_impl(const char* const __first, const char* __last, chars_format __fmt) {
   if (__first == __last) [[unlikely]]
     return {_Fp{0}, 0, errc::invalid_argument};
@@ -439,7 +455,7 @@ __from_chars_floating_point_impl(const char* const __first, const char* __last, 
   // LWG3456 Pattern used by std::from_chars is underspecified
   // Does not address this point, but proposed option B does solve this issue,
   // Both MSVC STL and libstdc++ implement this this behaviour.
-  switch (std::tolower(*__ptr)) {
+  switch (__ascii_tolower(*__ptr)) {
   case 'i':
     return std::__from_chars_floating_point_inf<_Fp>(__first, __last, __ptr + 1, __negative);
   case 'n':

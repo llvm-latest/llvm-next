@@ -36,9 +36,6 @@ set(LIBCXX_SOURCES
   optional.cpp
   print.cpp
   random_shuffle.cpp
-  ryu/d2fixed.cpp
-  ryu/d2s.cpp
-  ryu/f2s.cpp
   stdexcept.cpp
   string.cpp
   support/runtime/exception_fallback.ipp

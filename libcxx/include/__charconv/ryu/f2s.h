@@ -36,21 +36,23 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+#ifndef _LIBCPP_SRC_INCLUDE_RYU_FS2_H
+#define _LIBCPP_SRC_INCLUDE_RYU_FS2_H
+
 // Avoid formatting to keep the changes with the original code minimal.
 // clang-format off
 
 #include <__assert>
 #include <__config>
-#include <charconv>
+#include <__cstddef/ptrdiff_t.h>
 #include <cstdint>
-#include <cstddef>
 
-#include "include/ryu/common.h"
-#include "include/ryu/d2fixed.h"
-#include "include/ryu/d2s_intrinsics.h"
-#include "include/ryu/digit_table.h"
-#include "include/ryu/f2s.h"
-#include "include/ryu/ryu.h"
+#include "common.h"
+#include "d2fixed.h"
+#include "d2s_intrinsics.h"
+#include "digit_table.h"
+#include "f2s.h"
+#include "ryu.h"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -85,7 +87,7 @@ inline constexpr uint64_t __FLOAT_POW5_SPLIT[47] = {
   1292469707114105741u, 1615587133892632177u, 2019483917365790221u
 };
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __pow5Factor(uint32_t __value) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __pow5Factor(uint32_t __value) {
   uint32_t __count = 0;
   for (;;) {
     _LIBCPP_ASSERT_INTERNAL(__value != 0, "");
@@ -101,19 +103,19 @@ inline constexpr uint64_t __FLOAT_POW5_SPLIT[47] = {
 }
 
 // Returns true if __value is divisible by 5^__p.
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline bool __multipleOfPowerOf5(const uint32_t __value, const uint32_t __p) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline bool __multipleOfPowerOf5(const uint32_t __value, const uint32_t __p) {
   return __pow5Factor(__value) >= __p;
 }
 
 // Returns true if __value is divisible by 2^__p.
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline bool __multipleOfPowerOf2(const uint32_t __value, const uint32_t __p) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline bool __multipleOfPowerOf2(const uint32_t __value, const uint32_t __p) {
   _LIBCPP_ASSERT_INTERNAL(__value != 0, "");
   _LIBCPP_ASSERT_INTERNAL(__p < 32, "");
   // __builtin_ctz doesn't appear to be faster here.
   return (__value & ((1u << __p) - 1)) == 0;
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __mulShift(const uint32_t __m, const uint64_t __factor, const int32_t __shift) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __mulShift(const uint32_t __m, const uint64_t __factor, const int32_t __shift) {
   _LIBCPP_ASSERT_INTERNAL(__shift > 32, "");
 
   // The casts here help MSVC to avoid calls to the __allmul library
@@ -141,11 +143,11 @@ inline constexpr uint64_t __FLOAT_POW5_SPLIT[47] = {
 #endif // ^^^ 64-bit ^^^
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __mulPow5InvDivPow2(const uint32_t __m, const uint32_t __q, const int32_t __j) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __mulPow5InvDivPow2(const uint32_t __m, const uint32_t __q, const int32_t __j) {
   return __mulShift(__m, __FLOAT_POW5_INV_SPLIT[__q], __j);
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __mulPow5divPow2(const uint32_t __m, const uint32_t __i, const int32_t __j) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __mulPow5divPow2(const uint32_t __m, const uint32_t __i, const int32_t __j) {
   return __mulShift(__m, __FLOAT_POW5_SPLIT[__i], __j);
 }
 
@@ -155,7 +157,7 @@ struct __floating_decimal_32 {
   int32_t __exponent;
 };
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline __floating_decimal_32 __f2d(const uint32_t __ieeeMantissa, const uint32_t __ieeeExponent) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline __floating_decimal_32 __f2d(const uint32_t __ieeeMantissa, const uint32_t __ieeeExponent) {
   int32_t __e2;
   uint32_t __m2;
   if (__ieeeExponent == 0) {
@@ -294,7 +296,7 @@ struct __floating_decimal_32 {
   return __fd;
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline to_chars_result _Large_integer_to_chars(char* const _First, char* const _Last,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline to_chars_result _Large_integer_to_chars(char* const _First, char* const _Last,
   const uint32_t _Mantissa2, const int32_t _Exponent2) {
 
   // Print the integer _Mantissa2 * 2^_Exponent2 exactly.
@@ -418,7 +420,7 @@ struct __floating_decimal_32 {
   return { _Result, errc{} };
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline to_chars_result __to_chars(char* const _First, char* const _Last, const __floating_decimal_32 __v,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline to_chars_result __to_chars(char* const _First, char* const _Last, const __floating_decimal_32 __v,
   chars_format _Fmt, const uint32_t __ieeeMantissa, const uint32_t __ieeeExponent) {
   // Step 5: Print the decimal representation.
   uint32_t _Output = __v.__mantissa;
@@ -567,35 +569,38 @@ struct __floating_decimal_32 {
       _Output /= 10000;
       const uint32_t __c0 = (__c % 100) << 1;
       const uint32_t __c1 = (__c / 100) << 1;
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
+      _Mid -= 2; _Mid[0] = __DIGIT_TABLE[__c0]; _Mid[1] = __DIGIT_TABLE[__c0 + 1];
+      _Mid -= 2; _Mid[0] = __DIGIT_TABLE[__c1]; _Mid[1] = __DIGIT_TABLE[__c1 + 1];
     }
     if (_Output >= 100) {
       const uint32_t __c = (_Output % 100) << 1;
       _Output /= 100;
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
+      _Mid -= 2; _Mid[0] = __DIGIT_TABLE[__c]; _Mid[1] = __DIGIT_TABLE[__c + 1];
     }
     if (_Output >= 10) {
       const uint32_t __c = _Output << 1;
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
+      _Mid -= 2; _Mid[0] = __DIGIT_TABLE[__c]; _Mid[1] = __DIGIT_TABLE[__c + 1];
     } else {
       *--_Mid = static_cast<char>('0' + _Output);
     }
 
     if (_Ryu_exponent > 0) { // case "172900" with _Can_use_ryu
       // Performance note: it might be more efficient to do this immediately after setting _Mid.
-      std::memset(_First + __olength, '0', static_cast<size_t>(_Ryu_exponent));
+      for (int32_t __i = 0; __i < _Ryu_exponent; ++__i)
+        _First[__olength + __i] = '0';
     } else if (_Ryu_exponent == 0) { // case "1729"
       // Done!
     } else if (_Whole_digits > 0) { // case "17.29"
       // Performance note: moving digits might not be optimal.
-      std::memmove(_First, _First + 1, static_cast<size_t>(_Whole_digits));
+      for (int32_t __i = 0; __i < _Whole_digits; ++__i)
+        _First[__i] = _First[__i + 1];
       _First[_Whole_digits] = '.';
     } else { // case "0.001729"
       // Performance note: a larger memset() followed by overwriting '.' might be more efficient.
       _First[0] = '0';
       _First[1] = '.';
-      std::memset(_First + 2, '0', static_cast<size_t>(-_Whole_digits));
+      for (int32_t __i = 0; __i < -_Whole_digits; ++__i)
+        _First[2 + __i] = '0';
     }
 
     return { _First + _Total_fixed_length, errc{} };
@@ -619,14 +624,14 @@ struct __floating_decimal_32 {
     _Output /= 10000;
     const uint32_t __c0 = (__c % 100) << 1;
     const uint32_t __c1 = (__c / 100) << 1;
-    std::memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c0, 2);
-    std::memcpy(__result + __olength - __i - 3, __DIGIT_TABLE + __c1, 2);
+    __result[__olength - __i - 1] = __DIGIT_TABLE[__c0 + 1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c0];
+    __result[__olength - __i - 3] = __DIGIT_TABLE[__c1 + 1]; __result[__olength - __i - 4] = __DIGIT_TABLE[__c1];
     __i += 4;
   }
   if (_Output >= 100) {
     const uint32_t __c = (_Output % 100) << 1;
     _Output /= 100;
-    std::memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c, 2);
+    __result[__olength - __i - 1] = __DIGIT_TABLE[__c + 1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c];
     __i += 2;
   }
   if (_Output >= 10) {
@@ -656,13 +661,14 @@ struct __floating_decimal_32 {
     __result[__index++] = '+';
   }
 
-  std::memcpy(__result + __index, __DIGIT_TABLE + 2 * _Scientific_exponent, 2);
+  __result[__index] = __DIGIT_TABLE[2 * _Scientific_exponent];
+  __result[__index + 1] = __DIGIT_TABLE[2 * _Scientific_exponent + 1];
   __index += 2;
 
   return { _First + _Total_scientific_length, errc{} };
 }
 
-[[nodiscard]] to_chars_result __f2s_buffered_n(char* const _First, char* const _Last, const float __f,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 to_chars_result __f2s_buffered_n(char* const _First, char* const _Last, const float __f,
   const chars_format _Fmt) {
 
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
@@ -675,7 +681,7 @@ struct __floating_decimal_32 {
         return { _Last, errc::value_too_large };
       }
 
-      std::memcpy(_First, "0e+00", 5);
+      _First[0] = '0'; _First[1] = 'e'; _First[2] = '+'; _First[3] = '0'; _First[4] = '0';
 
       return { _First + 5, errc{} };
     }
@@ -716,3 +722,5 @@ struct __floating_decimal_32 {
 _LIBCPP_END_NAMESPACE_STD
 
 // clang-format on
+
+#endif // _LIBCPP_SRC_INCLUDE_RYU_FS2_H

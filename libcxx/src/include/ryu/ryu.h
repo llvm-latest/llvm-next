@@ -48,7 +48,6 @@
 #include <__config>
 #include <__system_error/errc.h>
 #include <cstdint>
-#include <cstring>
 #include <type_traits>
 
 #include "include/ryu/f2s.h"
@@ -86,7 +85,7 @@ _LIBCPP_HIDE_FROM_ABI inline unsigned char _BitScanForward(unsigned long* __inde
 #endif  // !_MSC_VER
 
 template <class _Floating>
-[[nodiscard]] to_chars_result _Floating_to_chars_ryu(
+[[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI to_chars_result _Floating_to_chars_ryu(
     char* const _First, char* const _Last, const _Floating _Value, const chars_format _Fmt) noexcept {
     if constexpr (_IsSame<_Floating, float>::value) {
         return __f2s_buffered_n(_First, _Last, _Value, _Fmt);
@@ -96,7 +95,7 @@ template <class _Floating>
 }
 
 template <class _Floating>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI to_chars_result _Floating_to_chars_scientific_precision(
+[[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI to_chars_result _Floating_to_chars_scientific_precision(
     char* const _First, char* const _Last, const _Floating _Value, int _Precision) noexcept {
 
     // C11 7.21.6.1 "The fprintf function"/5:
@@ -117,7 +116,7 @@ template <class _Floating>
 }
 
 template <class _Floating>
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI to_chars_result _Floating_to_chars_fixed_precision(
+[[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI to_chars_result _Floating_to_chars_fixed_precision(
     char* const _First, char* const _Last, const _Floating _Value, int _Precision) noexcept {
 
     // C11 7.21.6.1 "The fprintf function"/5:

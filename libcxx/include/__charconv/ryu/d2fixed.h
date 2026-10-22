@@ -36,21 +36,22 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+#ifndef _LIBCPP_SRC_INCLUDE_RYU_D2FIXED_H
+#define _LIBCPP_SRC_INCLUDE_RYU_D2FIXED_H
+
 // Avoid formatting to keep the changes with the original code minimal.
 // clang-format off
 
 #include <__assert>
 #include <__config>
-#include <charconv>
-#include <cstddef>
-#include <cstring>
+#include <__cstddef/ptrdiff_t.h>
+#include <cstdint>
 
-#include "include/ryu/common.h"
-#include "include/ryu/d2fixed.h"
-#include "include/ryu/d2fixed_full_table.h"
-#include "include/ryu/d2s.h"
-#include "include/ryu/d2s_intrinsics.h"
-#include "include/ryu/digit_table.h"
+#include "common.h"
+#include "d2fixed_full_table.h"
+#include "d2s.h"
+#include "d2s_intrinsics.h"
+#include "digit_table.h"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -58,7 +59,7 @@ inline constexpr int __POW10_ADDITIONAL_BITS = 120;
 
 #ifdef _LIBCPP_INTRINSIC128
 // Returns the low 64 bits of the high 128 bits of the 256-bit product of a and b.
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint64_t __umul256_hi128_lo64(
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint64_t __umul256_hi128_lo64(
   const uint64_t __aHi, const uint64_t __aLo, const uint64_t __bHi, const uint64_t __bLo) {
   uint64_t __b00Hi;
   const uint64_t __b00Lo = __ryu_umul128(__aLo, __bLo, &__b00Hi);
@@ -77,7 +78,7 @@ inline constexpr int __POW10_ADDITIONAL_BITS = 120;
   return __b11Lo + __temp1Hi + __temp2Hi;
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __uint128_mod1e9(const uint64_t __vHi, const uint64_t __vLo) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __uint128_mod1e9(const uint64_t __vHi, const uint64_t __vLo) {
   // After multiplying, we're going to shift right by 29, then truncate to uint32_t.
   // This means that we need only 29 + 32 = 61 bits, so we can truncate to uint64_t before shifting.
   const uint64_t __multiplied = __umul256_hi128_lo64(__vHi, __vLo, 0x89705F4136B4A597u, 0x31680A88F8953031u);
@@ -89,7 +90,7 @@ inline constexpr int __POW10_ADDITIONAL_BITS = 120;
 }
 #endif // ^^^ intrinsics available ^^^
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __mulShift_mod1e9(const uint64_t __m, const uint64_t* const __mul, const int32_t __j) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __mulShift_mod1e9(const uint64_t __m, const uint64_t* const __mul, const int32_t __j) {
   uint64_t __high0;                                               // 64
   const uint64_t __low0 = __ryu_umul128(__m, __mul[0], &__high0); // 0
   uint64_t __high1;                                               // 128
@@ -124,7 +125,7 @@ inline constexpr int __POW10_ADDITIONAL_BITS = 120;
 #endif // ^^^ intrinsics unavailable ^^^
 }
 
-void __append_n_digits(const uint32_t __olength, uint32_t __digits, char* const __result) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 void __append_n_digits(const uint32_t __olength, uint32_t __digits, char* const __result) {
   uint32_t __i = 0;
   while (__digits >= 10000) {
 #ifdef __clang__ // TRANSITION, LLVM-38217
@@ -135,25 +136,25 @@ void __append_n_digits(const uint32_t __olength, uint32_t __digits, char* const 
     __digits /= 10000;
     const uint32_t __c0 = (__c % 100) << 1;
     const uint32_t __c1 = (__c / 100) << 1;
-    std::memcpy(__result + __olength - __i - 2, __DIGIT_TABLE + __c0, 2);
-    std::memcpy(__result + __olength - __i - 4, __DIGIT_TABLE + __c1, 2);
+    __result[__olength - __i - 2] = __DIGIT_TABLE[__c0]; __result[__olength - __i - 1] = __DIGIT_TABLE[__c0 + 1];
+    __result[__olength - __i - 4] = __DIGIT_TABLE[__c1]; __result[__olength - __i - 3] = __DIGIT_TABLE[__c1 + 1];
     __i += 4;
   }
   if (__digits >= 100) {
     const uint32_t __c = (__digits % 100) << 1;
     __digits /= 100;
-    std::memcpy(__result + __olength - __i - 2, __DIGIT_TABLE + __c, 2);
+    __result[__olength - __i - 2] = __DIGIT_TABLE[__c]; __result[__olength - __i - 1] = __DIGIT_TABLE[__c + 1];
     __i += 2;
   }
   if (__digits >= 10) {
     const uint32_t __c = __digits << 1;
-    std::memcpy(__result + __olength - __i - 2, __DIGIT_TABLE + __c, 2);
+    __result[__olength - __i - 2] = __DIGIT_TABLE[__c]; __result[__olength - __i - 1] = __DIGIT_TABLE[__c + 1];
   } else {
     __result[0] = static_cast<char>('0' + __digits);
   }
 }
 
-_LIBCPP_HIDE_FROM_ABI inline void __append_d_digits(const uint32_t __olength, uint32_t __digits, char* const __result) {
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline void __append_d_digits(const uint32_t __olength, uint32_t __digits, char* const __result) {
   uint32_t __i = 0;
   while (__digits >= 10000) {
 #ifdef __clang__ // TRANSITION, LLVM-38217
@@ -164,14 +165,14 @@ _LIBCPP_HIDE_FROM_ABI inline void __append_d_digits(const uint32_t __olength, ui
     __digits /= 10000;
     const uint32_t __c0 = (__c % 100) << 1;
     const uint32_t __c1 = (__c / 100) << 1;
-    std::memcpy(__result + __olength + 1 - __i - 2, __DIGIT_TABLE + __c0, 2);
-    std::memcpy(__result + __olength + 1 - __i - 4, __DIGIT_TABLE + __c1, 2);
+    __result[__olength + 1 - __i - 2] = __DIGIT_TABLE[__c0]; __result[__olength + 1 - __i - 1] = __DIGIT_TABLE[__c0 + 1];
+    __result[__olength + 1 - __i - 4] = __DIGIT_TABLE[__c1]; __result[__olength + 1 - __i - 3] = __DIGIT_TABLE[__c1 + 1];
     __i += 4;
   }
   if (__digits >= 100) {
     const uint32_t __c = (__digits % 100) << 1;
     __digits /= 100;
-    std::memcpy(__result + __olength + 1 - __i - 2, __DIGIT_TABLE + __c, 2);
+    __result[__olength + 1 - __i - 2] = __DIGIT_TABLE[__c]; __result[__olength + 1 - __i - 1] = __DIGIT_TABLE[__c + 1];
     __i += 2;
   }
   if (__digits >= 10) {
@@ -185,12 +186,12 @@ _LIBCPP_HIDE_FROM_ABI inline void __append_d_digits(const uint32_t __olength, ui
   }
 }
 
-_LIBCPP_HIDE_FROM_ABI inline void __append_c_digits(const uint32_t __count, uint32_t __digits, char* const __result) {
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline void __append_c_digits(const uint32_t __count, uint32_t __digits, char* const __result) {
   uint32_t __i = 0;
   for (; __i < __count - 1; __i += 2) {
     const uint32_t __c = (__digits % 100) << 1;
     __digits /= 100;
-    std::memcpy(__result + __count - __i - 2, __DIGIT_TABLE + __c, 2);
+    __result[__count - __i - 2] = __DIGIT_TABLE[__c]; __result[__count - __i - 1] = __DIGIT_TABLE[__c + 1];
   }
   if (__i < __count) {
     const char __c = static_cast<char>('0' + (__digits % 10));
@@ -198,9 +199,10 @@ _LIBCPP_HIDE_FROM_ABI inline void __append_c_digits(const uint32_t __count, uint
   }
 }
 
-void __append_nine_digits(uint32_t __digits, char* const __result) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 void __append_nine_digits(uint32_t __digits, char* const __result) {
   if (__digits == 0) {
-    std::memset(__result, '0', 9);
+    for (uint32_t __i = 0; __i < 9; ++__i)
+      __result[__i] = '0';
     return;
   }
 
@@ -213,26 +215,26 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
     __digits /= 10000;
     const uint32_t __c0 = (__c % 100) << 1;
     const uint32_t __c1 = (__c / 100) << 1;
-    std::memcpy(__result + 7 - __i, __DIGIT_TABLE + __c0, 2);
-    std::memcpy(__result + 5 - __i, __DIGIT_TABLE + __c1, 2);
+    __result[7 - __i] = __DIGIT_TABLE[__c0]; __result[8 - __i] = __DIGIT_TABLE[__c0 + 1];
+    __result[5 - __i] = __DIGIT_TABLE[__c1]; __result[6 - __i] = __DIGIT_TABLE[__c1 + 1];
   }
   __result[0] = static_cast<char>('0' + __digits);
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __indexForExponent(const uint32_t __e) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __indexForExponent(const uint32_t __e) {
   return (__e + 15) / 16;
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __pow10BitsForIndex(const uint32_t __idx) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __pow10BitsForIndex(const uint32_t __idx) {
   return 16 * __idx + __POW10_ADDITIONAL_BITS;
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __lengthForIndex(const uint32_t __idx) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __lengthForIndex(const uint32_t __idx) {
   // +1 for ceil, +16 for mantissa, +8 to round up when dividing by 9
   return (__log10Pow2(16 * static_cast<int32_t>(__idx)) + 1 + 16 + 8) / 9;
 }
 
-[[nodiscard]] to_chars_result __d2fixed_buffered_n(char* _First, char* const _Last, const double __d,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 to_chars_result __d2fixed_buffered_n(char* _First, char* const _Last, const double __d,
   const uint32_t __precision) {
   char* const _Original_first = _First;
 
@@ -251,7 +253,8 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
     *_First++ = '0';
     if (__precision > 0) {
       *_First++ = '.';
-      std::memset(_First, '0', __precision);
+      for (uint32_t __i = 0; __i < __precision; ++__i)
+        _First[__i] = '0';
       _First += __precision;
     }
     return { _First, errc{} };
@@ -322,14 +325,16 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
       if (_Last - _First < static_cast<ptrdiff_t>(__precision)) {
         return { _Last, errc::value_too_large };
       }
-      std::memset(_First, '0', __precision);
+      for (uint32_t __k = 0; __k < __precision; ++__k)
+        _First[__k] = '0';
       _First += __precision;
     } else if (__i < __MIN_BLOCK_2[__idx]) {
       __i = __MIN_BLOCK_2[__idx];
       if (_Last - _First < static_cast<ptrdiff_t>(9 * __i)) {
         return { _Last, errc::value_too_large };
       }
-      std::memset(_First, '0', 9 * __i);
+      for (uint32_t __k = 0; __k < 9 * __i; ++__k)
+        _First[__k] = '0';
       _First += 9 * __i;
     }
     for (; __i < __blocks; ++__i) {
@@ -342,7 +347,8 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
         if (_Last - _First < static_cast<ptrdiff_t>(__fill)) {
           return { _Last, errc::value_too_large };
         }
-        std::memset(_First, '0', __fill);
+        for (uint32_t __k = 0; __k < __fill; ++__k)
+          _First[__k] = '0';
         _First += __fill;
         break;
       }
@@ -416,13 +422,14 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
     if (_Last - _First < static_cast<ptrdiff_t>(__precision)) {
       return { _Last, errc::value_too_large };
     }
-    std::memset(_First, '0', __precision);
+    for (uint32_t __k = 0; __k < __precision; ++__k)
+      _First[__k] = '0';
     _First += __precision;
   }
   return { _First, errc{} };
 }
 
-[[nodiscard]] to_chars_result __d2exp_buffered_n(char* _First, char* const _Last, const double __d,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 to_chars_result __d2exp_buffered_n(char* _First, char* const _Last, const double __d,
   uint32_t __precision) {
   char* const _Original_first = _First;
 
@@ -440,10 +447,11 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
     *_First++ = '0';
     if (__precision > 0) {
       *_First++ = '.';
-      std::memset(_First, '0', __precision);
+      for (uint32_t __k = 0; __k < __precision; ++__k)
+        _First[__k] = '0';
       _First += __precision;
     }
-    std::memcpy(_First, "e+00", 4);
+    _First[0] = 'e'; _First[1] = '+'; _First[2] = '0'; _First[3] = '0';
     _First += 4;
     return { _First, errc{} };
   }
@@ -589,7 +597,8 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
       return { _Last, errc::value_too_large };
     }
     if (__digits == 0) {
-      std::memset(_First, '0', __maximum);
+      for (uint32_t __k = 0; __k < __maximum; ++__k)
+        _First[__k] = '0';
     } else {
       __append_c_digits(__maximum, __digits, _First);
     }
@@ -654,11 +663,13 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
 
   if (__exp >= 100) {
     const int32_t __c = __exp % 10;
-    std::memcpy(_First, __DIGIT_TABLE + 2 * (__exp / 10), 2);
+    _First[0] = __DIGIT_TABLE[2 * (__exp / 10)];
+    _First[1] = __DIGIT_TABLE[2 * (__exp / 10) + 1];
     _First[2] = static_cast<char>('0' + __c);
     _First += 3;
   } else {
-    std::memcpy(_First, __DIGIT_TABLE + 2 * __exp, 2);
+    _First[0] = __DIGIT_TABLE[2 * __exp];
+    _First[1] = __DIGIT_TABLE[2 * __exp + 1];
     _First += 2;
   }
 
@@ -668,3 +679,5 @@ void __append_nine_digits(uint32_t __digits, char* const __result) {
 _LIBCPP_END_NAMESPACE_STD
 
 // clang-format on
+
+#endif // _LIBCPP_SRC_INCLUDE_RYU_D2FIXED_H
