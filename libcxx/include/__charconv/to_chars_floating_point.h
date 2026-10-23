@@ -18,11 +18,15 @@
 #  pragma GCC system_header
 #endif
 
+#if _LIBCPP_STD_VER >= 17
+// This header defines _Floating_to_chars and the Ryu conversion routines. It
+// has to be included outside namespace std.
+#  include <__charconv/to_chars_floating_point_impl.h>
+#endif
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 #if _LIBCPP_STD_VER >= 17
-
-#include <__charconv/to_chars_floating_point_impl.h>
 
 _LIBCPP_BEGIN_EXPLICIT_ABI_ANNOTATIONS
 

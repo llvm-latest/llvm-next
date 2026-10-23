@@ -15,7 +15,7 @@
 #include "src/__support/CPP/limits.h"
 #include "src/__support/CPP/optional.h"
 #include "src/__support/CPP/type_traits.h"
-#include "src/__support/macros/attributes.h" // LIBC_CONSTEXPR_DEFAULT
+#include "src/__support/macros/attributes.h" // LIBC_INLINE
 #include "src/__support/macros/config.h"
 #include "src/__support/macros/optimization.h"        // LIBC_UNLIKELY
 #include "src/__support/macros/properties/compiler.h" // LIBC_COMPILER_IS_CLANG
@@ -46,11 +46,11 @@ template <typename T> using half_width_t = typename half_width<T>::type;
 template <typename T> struct DoubleWide final : cpp::array<T, 2> {
   using UP = cpp::array<T, 2>;
   using UP::UP;
-  LIBC_CONSTEXPR_DEFAULT constexpr DoubleWide(T lo, T hi) : UP({lo, hi}) {}
+  LIBC_INLINE constexpr DoubleWide(T lo, T hi) : UP({lo, hi}) {}
 };
 
 // Converts an unsigned value into a DoubleWide<half_width_t<T>>.
-template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr auto split(T value) {
+template <typename T> LIBC_INLINE constexpr auto split(T value) {
   static_assert(cpp::is_unsigned_v<T>);
   using half_type = half_width_t<T>;
   return DoubleWide<half_type>(
@@ -59,25 +59,25 @@ template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr auto split(T value) {
 }
 
 // The low part of a DoubleWide value.
-template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr T lo(const DoubleWide<T> &value) {
+template <typename T> LIBC_INLINE constexpr T lo(const DoubleWide<T> &value) {
   return value[0];
 }
 // The high part of a DoubleWide value.
-template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr T hi(const DoubleWide<T> &value) {
+template <typename T> LIBC_INLINE constexpr T hi(const DoubleWide<T> &value) {
   return value[1];
 }
 // The low part of an unsigned value.
-template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr half_width_t<T> lo(T value) {
+template <typename T> LIBC_INLINE constexpr half_width_t<T> lo(T value) {
   return lo(split(value));
 }
 // The high part of an unsigned value.
-template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr half_width_t<T> hi(T value) {
+template <typename T> LIBC_INLINE constexpr half_width_t<T> hi(T value) {
   return hi(split(value));
 }
 
 // Returns 'a' times 'b' in a DoubleWide<word>. Cannot overflow by construction.
 template <typename word>
-LIBC_CONSTEXPR_DEFAULT constexpr DoubleWide<word> mul2(word a, word b) {
+LIBC_INLINE constexpr DoubleWide<word> mul2(word a, word b) {
   if constexpr (cpp::is_same_v<word, uint8_t>) {
     return split<uint16_t>(uint16_t(a) * uint16_t(b));
   } else if constexpr (cpp::is_same_v<word, uint16_t>) {
@@ -134,7 +134,7 @@ LIBC_CONSTEXPR_DEFAULT constexpr DoubleWide<word> mul2(word a, word b) {
 
 // In-place 'dst op= rhs' with operation with carry propagation. Returns carry.
 template <typename Function, typename word, size_t N, size_t M>
-LIBC_CONSTEXPR_DEFAULT constexpr word inplace_binop(Function op_with_carry,
+LIBC_INLINE constexpr word inplace_binop(Function op_with_carry,
                                          cpp::array<word, N> &dst,
                                          const cpp::array<word, M> &rhs) {
   static_assert(N >= M);
@@ -153,14 +153,14 @@ LIBC_CONSTEXPR_DEFAULT constexpr word inplace_binop(Function op_with_carry,
 
 // In-place addition. Returns carry.
 template <typename word, size_t N, size_t M>
-LIBC_CONSTEXPR_DEFAULT constexpr word add_with_carry(cpp::array<word, N> &dst,
+LIBC_INLINE constexpr word add_with_carry(cpp::array<word, N> &dst,
                                           const cpp::array<word, M> &rhs) {
   return inplace_binop(LIBC_NAMESPACE::add_with_carry<word>, dst, rhs);
 }
 
 // In-place subtraction. Returns borrow.
 template <typename word, size_t N, size_t M>
-LIBC_CONSTEXPR_DEFAULT constexpr word sub_with_borrow(cpp::array<word, N> &dst,
+LIBC_INLINE constexpr word sub_with_borrow(cpp::array<word, N> &dst,
                                            const cpp::array<word, M> &rhs) {
   return inplace_binop(LIBC_NAMESPACE::sub_with_borrow<word>, dst, rhs);
 }
@@ -168,7 +168,7 @@ LIBC_CONSTEXPR_DEFAULT constexpr word sub_with_borrow(cpp::array<word, N> &dst,
 // In-place multiply-add. Returns carry.
 // i.e., 'dst += b * c'
 template <typename word, size_t N>
-LIBC_CONSTEXPR_DEFAULT constexpr word mul_add_with_carry(cpp::array<word, N> &dst, word b,
+LIBC_INLINE constexpr word mul_add_with_carry(cpp::array<word, N> &dst, word b,
                                               word c) {
   return add_with_carry(dst, mul2(b, c));
 }
@@ -177,20 +177,20 @@ LIBC_CONSTEXPR_DEFAULT constexpr word mul_add_with_carry(cpp::array<word, N> &ds
 // computations.
 template <typename T> struct Accumulator final : cpp::array<T, 2> {
   using UP = cpp::array<T, 2>;
-  LIBC_CONSTEXPR_DEFAULT constexpr Accumulator() : UP({0, 0}) {}
-  LIBC_CONSTEXPR_DEFAULT constexpr T advance(T carry_in) {
+  LIBC_INLINE constexpr Accumulator() : UP({0, 0}) {}
+  LIBC_INLINE constexpr T advance(T carry_in) {
     auto result = UP::front();
     UP::front() = UP::back();
     UP::back() = carry_in;
     return result;
   }
-  LIBC_CONSTEXPR_DEFAULT constexpr T sum() const { return UP::front(); }
-  LIBC_CONSTEXPR_DEFAULT constexpr T carry() const { return UP::back(); }
+  LIBC_INLINE constexpr T sum() const { return UP::front(); }
+  LIBC_INLINE constexpr T carry() const { return UP::back(); }
 };
 
 // In-place multiplication by a single word. Returns carry.
 template <typename word, size_t N>
-LIBC_CONSTEXPR_DEFAULT constexpr word scalar_multiply_with_carry(cpp::array<word, N> &dst,
+LIBC_INLINE constexpr word scalar_multiply_with_carry(cpp::array<word, N> &dst,
                                                       word x) {
   Accumulator<word> acc;
   for (auto &val : dst) {
@@ -205,7 +205,7 @@ LIBC_CONSTEXPR_DEFAULT constexpr word scalar_multiply_with_carry(cpp::array<word
 // https://stackoverflow.com/a/20793834
 // https://pages.cs.wisc.edu/%7Emarkhill/cs354/Fall2008/beyond354/int.mult.html
 template <typename word, size_t O, size_t M, size_t N>
-LIBC_CONSTEXPR_DEFAULT constexpr word multiply_with_carry(cpp::array<word, O> &dst,
+LIBC_INLINE constexpr word multiply_with_carry(cpp::array<word, O> &dst,
                                                const cpp::array<word, M> &lhs,
                                                const cpp::array<word, N> &rhs) {
   static_assert(O >= M + N);
@@ -222,7 +222,7 @@ LIBC_CONSTEXPR_DEFAULT constexpr word multiply_with_carry(cpp::array<word, O> &d
 }
 
 template <typename word, size_t N>
-LIBC_CONSTEXPR_DEFAULT constexpr void quick_mul_hi(cpp::array<word, N> &dst,
+LIBC_INLINE constexpr void quick_mul_hi(cpp::array<word, N> &dst,
                                         const cpp::array<word, N> &lhs,
                                         const cpp::array<word, N> &rhs) {
   Accumulator<word> acc;
@@ -241,7 +241,7 @@ LIBC_CONSTEXPR_DEFAULT constexpr void quick_mul_hi(cpp::array<word, N> &dst,
 }
 
 template <typename word, size_t N>
-LIBC_CONSTEXPR_DEFAULT constexpr bool is_negative(const cpp::array<word, N> &array) {
+LIBC_INLINE constexpr bool is_negative(const cpp::array<word, N> &array) {
   constexpr size_t WORD_BITS = cpp::numeric_limits<word>::digits;
   return (array.back() >> (WORD_BITS - 1)) != 0;
 }
@@ -252,7 +252,7 @@ enum Direction { LEFT, RIGHT };
 // 'offset' must be less than TOTAL_BITS (i.e., sizeof(word) * CHAR_BIT * N)
 // otherwise the behavior is undefined.
 template <Direction direction, bool is_signed, typename word, size_t N>
-LIBC_CONSTEXPR_DEFAULT constexpr cpp::array<word, N> shift(cpp::array<word, N> array,
+LIBC_INLINE constexpr cpp::array<word, N> shift(cpp::array<word, N> array,
                                                 size_t offset) {
   static_assert(direction == LEFT || direction == RIGHT);
   constexpr size_t WORD_BITS = cpp::numeric_limits<word>::digits;
@@ -314,7 +314,7 @@ LIBC_CONSTEXPR_DEFAULT constexpr cpp::array<word, N> shift(cpp::array<word, N> a
 
 #define DECLARE_COUNTBIT(NAME, INDEX_EXPR)                                     \
   template <typename word, size_t N>                                           \
-  LIBC_CONSTEXPR_DEFAULT constexpr int NAME(const cpp::array<word, N> &val) {             \
+  LIBC_INLINE constexpr int NAME(const cpp::array<word, N> &val) {             \
     int bit_count = 0;                                                         \
     for (size_t i = 0; i < N; ++i) {                                           \
       const int word_count = cpp::NAME<word>(val[INDEX_EXPR]);                 \
@@ -360,12 +360,12 @@ public:
 
   cpp::array<WordType, WORD_COUNT> val{}; // zero initialized.
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt() = default;
+  LIBC_INLINE constexpr BigInt() = default;
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt(const BigInt &other) = default;
+  LIBC_INLINE constexpr BigInt(const BigInt &other) = default;
 
   template <size_t OtherBits, bool OtherSigned, typename OtherWordType>
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt(
+  LIBC_INLINE constexpr BigInt(
       const BigInt<OtherBits, OtherSigned, OtherWordType> &other) {
     using BigIntOther = BigInt<OtherBits, OtherSigned, OtherWordType>;
     [[maybe_unused]] const bool should_sign_extend = Signed && other.is_neg();
@@ -456,20 +456,20 @@ public:
   }
 
   // Construct a BigInt from a C array.
-  template <size_t N> LIBC_CONSTEXPR_DEFAULT constexpr BigInt(const WordType (&nums)[N]) {
+  template <size_t N> LIBC_INLINE constexpr BigInt(const WordType (&nums)[N]) {
     static_assert(N == WORD_COUNT);
     for (size_t i = 0; i < WORD_COUNT; ++i)
       val[i] = nums[i];
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr explicit BigInt(
+  LIBC_INLINE constexpr explicit BigInt(
       const cpp::array<WordType, WORD_COUNT> &words) {
     val = words;
   }
 
   // Initialize the first word to |v| and the rest to 0.
   template <typename T, typename = cpp::enable_if_t<cpp::is_integral_v<T>>>
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt(T v) {
+  LIBC_INLINE constexpr BigInt(T v) {
     constexpr size_t T_SIZE = sizeof(T) * CHAR_BIT;
     const bool is_neg = v < 0;
     for (size_t i = 0; i < WORD_COUNT; ++i) {
@@ -484,19 +484,19 @@ public:
         v = 0;
     }
   }
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator=(const BigInt &other) = default;
+  LIBC_INLINE constexpr BigInt &operator=(const BigInt &other) = default;
 
   // constants
-  static LIBC_CONSTEXPR_DEFAULT constexpr BigInt zero() { return BigInt(); }
-  static LIBC_CONSTEXPR_DEFAULT constexpr BigInt one() { return BigInt(1); }
-  static LIBC_CONSTEXPR_DEFAULT constexpr BigInt all_ones() { return ~zero(); }
-  static LIBC_CONSTEXPR_DEFAULT constexpr BigInt min() {
+  LIBC_INLINE static constexpr BigInt zero() { return BigInt(); }
+  LIBC_INLINE static constexpr BigInt one() { return BigInt(1); }
+  LIBC_INLINE static constexpr BigInt all_ones() { return ~zero(); }
+  LIBC_INLINE static constexpr BigInt min() {
     BigInt out;
     if constexpr (SIGNED)
       out.set_msb();
     return out;
   }
-  static LIBC_CONSTEXPR_DEFAULT constexpr BigInt max() {
+  LIBC_INLINE static constexpr BigInt max() {
     BigInt out = all_ones();
     if constexpr (SIGNED)
       out.clear_msb();
@@ -504,20 +504,20 @@ public:
   }
 
   // TODO: Reuse the Sign type.
-  LIBC_CONSTEXPR_DEFAULT constexpr bool is_neg() const { return SIGNED && get_msb(); }
+  LIBC_INLINE constexpr bool is_neg() const { return SIGNED && get_msb(); }
 
   template <size_t OtherBits, bool OtherSigned, typename OtherWordType>
-  LIBC_CONSTEXPR_DEFAULT constexpr explicit
+  LIBC_INLINE constexpr explicit
   operator BigInt<OtherBits, OtherSigned, OtherWordType>() const {
     return BigInt<OtherBits, OtherSigned, OtherWordType>(this);
   }
 
-  template <typename T> LIBC_CONSTEXPR_DEFAULT constexpr explicit operator T() const {
+  template <typename T> LIBC_INLINE constexpr explicit operator T() const {
     return to<T>();
   }
 
   template <typename T>
-  LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<
+  LIBC_INLINE constexpr cpp::enable_if_t<
       cpp::is_integral_v<T> && !cpp::is_same_v<T, bool>, T>
   to() const {
     constexpr size_t T_SIZE = sizeof(T) * CHAR_BIT;
@@ -537,9 +537,9 @@ public:
     return lo;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr explicit operator bool() const { return !is_zero(); }
+  LIBC_INLINE constexpr explicit operator bool() const { return !is_zero(); }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr bool is_zero() const {
+  LIBC_INLINE constexpr bool is_zero() const {
     for (auto part : val)
       if (part != 0)
         return false;
@@ -548,11 +548,11 @@ public:
 
   // Add 'rhs' to this number and store the result in this number.
   // Returns the carry value produced by the addition operation.
-  LIBC_CONSTEXPR_DEFAULT constexpr WordType add_overflow(const BigInt &rhs) {
+  LIBC_INLINE constexpr WordType add_overflow(const BigInt &rhs) {
     return multiword::add_with_carry(val, rhs.val);
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator+(const BigInt &other) const {
+  LIBC_INLINE constexpr BigInt operator+(const BigInt &other) const {
     BigInt result = *this;
     result.add_overflow(other);
     return result;
@@ -560,56 +560,56 @@ public:
 
   // This will only apply when initializing a variable from constant values, so
   // it will always use the constexpr version of add_with_carry.
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator+(BigInt &&other) const {
+  LIBC_INLINE constexpr BigInt operator+(BigInt &&other) const {
     // We use addition commutativity to reuse 'other' and prevent allocation.
     other.add_overflow(*this); // Returned carry value is ignored.
     return other;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator+=(const BigInt &other) {
+  LIBC_INLINE constexpr BigInt &operator+=(const BigInt &other) {
     add_overflow(other); // Returned carry value is ignored.
     return *this;
   }
 
   // Subtract 'rhs' to this number and store the result in this number.
   // Returns the carry value produced by the subtraction operation.
-  LIBC_CONSTEXPR_DEFAULT constexpr WordType sub_overflow(const BigInt &rhs) {
+  LIBC_INLINE constexpr WordType sub_overflow(const BigInt &rhs) {
     return multiword::sub_with_borrow(val, rhs.val);
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator-(const BigInt &other) const {
+  LIBC_INLINE constexpr BigInt operator-(const BigInt &other) const {
     BigInt result = *this;
     result.sub_overflow(other); // Returned carry value is ignored.
     return result;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator-(BigInt &&other) const {
+  LIBC_INLINE constexpr BigInt operator-(BigInt &&other) const {
     BigInt result = *this;
     result.sub_overflow(other); // Returned carry value is ignored.
     return result;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator-=(const BigInt &other) {
+  LIBC_INLINE constexpr BigInt &operator-=(const BigInt &other) {
     // TODO(lntue): Set overflow flag / errno when carry is true.
     sub_overflow(other); // Returned carry value is ignored.
     return *this;
   }
 
   // Multiply this number with x and store the result in this number.
-  LIBC_CONSTEXPR_DEFAULT constexpr WordType mul(WordType x) {
+  LIBC_INLINE constexpr WordType mul(WordType x) {
     return multiword::scalar_multiply_with_carry(val, x);
   }
 
   // Return the full product.
   template <size_t OtherBits>
-  LIBC_CONSTEXPR_DEFAULT constexpr auto
+  LIBC_INLINE constexpr auto
   ful_mul(const BigInt<OtherBits, Signed, WordType> &other) const {
     BigInt<Bits + OtherBits, Signed, WordType> result;
     multiword::multiply_with_carry(result.val, val, other.val);
     return result;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator*(const BigInt &other) const {
+  LIBC_INLINE constexpr BigInt operator*(const BigInt &other) const {
     // Perform full mul and truncate.
     return BigInt(ful_mul(other));
   }
@@ -635,7 +635,7 @@ public:
   //    196      3         9           6            2
   //    256      4        16          10            3
   //    512      8        64          36            7
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt quick_mul_hi(const BigInt &other) const {
+  LIBC_INLINE constexpr BigInt quick_mul_hi(const BigInt &other) const {
     BigInt result;
     multiword::quick_mul_hi(result.val, val, other.val);
     return result;
@@ -643,7 +643,7 @@ public:
 
   // BigInt(x).pow_n(n) computes x ^ n.
   // Note 0 ^ 0 == 1.
-  LIBC_CONSTEXPR_DEFAULT constexpr void pow_n(uint64_t power) {
+  LIBC_INLINE constexpr void pow_n(uint64_t power) {
     static_assert(!Signed);
     BigInt result = one();
     BigInt cur_power = *this;
@@ -661,7 +661,7 @@ public:
   // For signed numbers it behaves like C++ signed integer division.
   // That is by truncating the fractionnal part
   // https://stackoverflow.com/a/3602857
-  LIBC_CONSTEXPR_DEFAULT constexpr cpp::optional<BigInt> div(const BigInt &divider) {
+  LIBC_INLINE constexpr cpp::optional<BigInt> div(const BigInt &divider) {
     if (LIBC_UNLIKELY(divider.is_zero()))
       return cpp::nullopt;
     if (LIBC_UNLIKELY(divider == BigInt::one()))
@@ -687,7 +687,7 @@ public:
   //   Since the remainder of each division step < x < 2^(WORD_SIZE / 2), the
   // computation of each step is now properly contained within WordType.
   //   And finally we perform some extra alignment steps for the remaining bits.
-  LIBC_CONSTEXPR_DEFAULT constexpr cpp::optional<BigInt>
+  LIBC_INLINE constexpr cpp::optional<BigInt>
   div_uint_half_times_pow_2(multiword::half_width_t<WordType> x, size_t e) {
     BigInt remainder;
     if (x == 0)
@@ -802,59 +802,59 @@ public:
     return remainder;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator/(const BigInt &other) const {
+  LIBC_INLINE constexpr BigInt operator/(const BigInt &other) const {
     BigInt result(*this);
     result.div(other);
     return result;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator/=(const BigInt &other) {
+  LIBC_INLINE constexpr BigInt &operator/=(const BigInt &other) {
     div(other);
     return *this;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator%(const BigInt &other) const {
+  LIBC_INLINE constexpr BigInt operator%(const BigInt &other) const {
     BigInt result(*this);
     return *result.div(other);
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator%=(const BigInt &other) {
+  LIBC_INLINE constexpr BigInt operator%=(const BigInt &other) {
     *this = *this % other;
     return *this;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator*=(const BigInt &other) {
+  LIBC_INLINE constexpr BigInt &operator*=(const BigInt &other) {
     *this = *this * other;
     return *this;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator<<=(size_t s) {
+  LIBC_INLINE constexpr BigInt &operator<<=(size_t s) {
     val = multiword::shift<multiword::LEFT, SIGNED>(val, s);
     return *this;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator<<(size_t s) const {
+  LIBC_INLINE constexpr BigInt operator<<(size_t s) const {
     return BigInt(multiword::shift<multiword::LEFT, SIGNED>(val, s));
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator>>=(size_t s) {
+  LIBC_INLINE constexpr BigInt &operator>>=(size_t s) {
     val = multiword::shift<multiword::RIGHT, SIGNED>(val, s);
     return *this;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator>>(size_t s) const {
+  LIBC_INLINE constexpr BigInt operator>>(size_t s) const {
     return BigInt(multiword::shift<multiword::RIGHT, SIGNED>(val, s));
   }
 
 #define DEFINE_BINOP(OP)                                                       \
-  LIBC_CONSTEXPR_DEFAULT friend constexpr BigInt operator OP(const BigInt &lhs,           \
+  LIBC_INLINE friend constexpr BigInt operator OP(const BigInt &lhs,           \
                                                   const BigInt &rhs) {         \
     BigInt result;                                                             \
     for (size_t i = 0; i < WORD_COUNT; ++i)                                    \
       result[i] = lhs[i] OP rhs[i];                                            \
     return result;                                                             \
   }                                                                            \
-  LIBC_CONSTEXPR_DEFAULT friend constexpr BigInt operator OP##=(BigInt &lhs,              \
+  LIBC_INLINE friend constexpr BigInt operator OP##=(BigInt &lhs,              \
                                                      const BigInt &rhs) {      \
     for (size_t i = 0; i < WORD_COUNT; ++i)                                    \
       lhs[i] OP## = rhs[i];                                                    \
@@ -866,20 +866,20 @@ public:
   DEFINE_BINOP(^) // ^ and ^=
 #undef DEFINE_BINOP
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator~() const {
+  LIBC_INLINE constexpr BigInt operator~() const {
     BigInt result;
     for (size_t i = 0; i < WORD_COUNT; ++i)
       result[i] = static_cast<WordType>(~val[i]);
     return result;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator-() const {
+  LIBC_INLINE constexpr BigInt operator-() const {
     BigInt result(*this);
     result.negate();
     return result;
   }
 
-  LIBC_CONSTEXPR_DEFAULT friend constexpr bool operator==(const BigInt &lhs,
+  LIBC_INLINE friend constexpr bool operator==(const BigInt &lhs,
                                                const BigInt &rhs) {
     for (size_t i = 0; i < WORD_COUNT; ++i)
       if (lhs.val[i] != rhs.val[i])
@@ -887,72 +887,72 @@ public:
     return true;
   }
 
-  LIBC_CONSTEXPR_DEFAULT friend constexpr bool operator!=(const BigInt &lhs,
+  LIBC_INLINE friend constexpr bool operator!=(const BigInt &lhs,
                                                const BigInt &rhs) {
     return !(lhs == rhs);
   }
 
-  LIBC_CONSTEXPR_DEFAULT friend constexpr bool operator>(const BigInt &lhs,
+  LIBC_INLINE friend constexpr bool operator>(const BigInt &lhs,
                                               const BigInt &rhs) {
     return cmp(lhs, rhs) > 0;
   }
-  LIBC_CONSTEXPR_DEFAULT friend constexpr bool operator>=(const BigInt &lhs,
+  LIBC_INLINE friend constexpr bool operator>=(const BigInt &lhs,
                                                const BigInt &rhs) {
     return cmp(lhs, rhs) >= 0;
   }
-  LIBC_CONSTEXPR_DEFAULT friend constexpr bool operator<(const BigInt &lhs,
+  LIBC_INLINE friend constexpr bool operator<(const BigInt &lhs,
                                               const BigInt &rhs) {
     return cmp(lhs, rhs) < 0;
   }
-  LIBC_CONSTEXPR_DEFAULT friend constexpr bool operator<=(const BigInt &lhs,
+  LIBC_INLINE friend constexpr bool operator<=(const BigInt &lhs,
                                                const BigInt &rhs) {
     return cmp(lhs, rhs) <= 0;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator++() {
+  LIBC_INLINE constexpr BigInt &operator++() {
     increment();
     return *this;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator++(int) {
+  LIBC_INLINE constexpr BigInt operator++(int) {
     BigInt oldval(*this);
     increment();
     return oldval;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt &operator--() {
+  LIBC_INLINE constexpr BigInt &operator--() {
     decrement();
     return *this;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr BigInt operator--(int) {
+  LIBC_INLINE constexpr BigInt operator--(int) {
     BigInt oldval(*this);
     decrement();
     return oldval;
   }
 
   // Return the i-th word of the number.
-  LIBC_CONSTEXPR_DEFAULT constexpr const WordType &operator[](size_t i) const {
+  LIBC_INLINE constexpr const WordType &operator[](size_t i) const {
     return val[i];
   }
 
   // Return the i-th word of the number.
-  LIBC_CONSTEXPR_DEFAULT constexpr WordType &operator[](size_t i) { return val[i]; }
+  LIBC_INLINE constexpr WordType &operator[](size_t i) { return val[i]; }
 
   // Return the i-th bit of the number.
-  LIBC_CONSTEXPR_DEFAULT constexpr bool get_bit(size_t i) const {
+  LIBC_INLINE constexpr bool get_bit(size_t i) const {
     const size_t word_index = i / WORD_SIZE;
     return 1 & (val[word_index] >> (i % WORD_SIZE));
   }
 
   // Set the i-th bit of the number.
-  LIBC_CONSTEXPR_DEFAULT constexpr void set_bit(size_t i) {
+  LIBC_INLINE constexpr void set_bit(size_t i) {
     const size_t word_index = i / WORD_SIZE;
     val[word_index] |= WordType(1) << (i % WORD_SIZE);
   }
 
 private:
-  LIBC_CONSTEXPR_DEFAULT friend constexpr int cmp(const BigInt &lhs, const BigInt &rhs) {
+  LIBC_INLINE friend constexpr int cmp(const BigInt &lhs, const BigInt &rhs) {
     constexpr auto compare = [](WordType a, WordType b) {
       return a == b ? 0 : a > b ? 1 : -1;
     };
@@ -968,43 +968,43 @@ private:
     return 0;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr void bitwise_not() {
+  LIBC_INLINE constexpr void bitwise_not() {
     for (auto &part : val)
       part = static_cast<WordType>(~part);
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr void negate() {
+  LIBC_INLINE constexpr void negate() {
     bitwise_not();
     increment();
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr void increment() {
+  LIBC_INLINE constexpr void increment() {
     multiword::add_with_carry(val, cpp::array<WordType, 1>{1});
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr void decrement() {
+  LIBC_INLINE constexpr void decrement() {
     multiword::sub_with_borrow(val, cpp::array<WordType, 1>{1});
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr void extend(size_t index, bool is_neg) {
+  LIBC_INLINE constexpr void extend(size_t index, bool is_neg) {
     const WordType value = is_neg ? cpp::numeric_limits<WordType>::max()
                                   : cpp::numeric_limits<WordType>::min();
     for (size_t i = index; i < WORD_COUNT; ++i)
       val[i] = value;
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr bool get_msb() const {
+  LIBC_INLINE constexpr bool get_msb() const {
     return val.back() >> (WORD_SIZE - 1);
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr void set_msb() {
+  LIBC_INLINE constexpr void set_msb() {
     val.back() |= mask_leading_ones<WordType, 1>();
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr void clear_msb() {
+  LIBC_INLINE constexpr void clear_msb() {
     val.back() &= mask_trailing_ones<WordType, WORD_SIZE - 1>();
   }
-  LIBC_CONSTEXPR_DEFAULT constexpr static Division divide_unsigned(const BigInt &dividend,
+  LIBC_INLINE constexpr static Division divide_unsigned(const BigInt &dividend,
                                                         const BigInt &divider) {
     BigInt remainder = dividend;
     BigInt quotient;
@@ -1023,7 +1023,7 @@ private:
     return Division{quotient, remainder};
   }
 
-  LIBC_CONSTEXPR_DEFAULT constexpr static Division divide_signed(const BigInt &dividend,
+  LIBC_INLINE constexpr static Division divide_signed(const BigInt &dividend,
                                                       const BigInt &divider) {
     // Special case because it is not possible to negate the min value of a
     // signed integer.
@@ -1088,10 +1088,10 @@ using Int = BigInt<Bits, true, internal::WordTypeSelectorT<Bits>>;
 // Provides limits of BigInt.
 template <size_t Bits, bool Signed, typename T>
 struct cpp::numeric_limits<BigInt<Bits, Signed, T>> {
-  static LIBC_CONSTEXPR_DEFAULT constexpr BigInt<Bits, Signed, T> max() {
+  LIBC_INLINE static constexpr BigInt<Bits, Signed, T> max() {
     return BigInt<Bits, Signed, T>::max();
   }
-  static LIBC_CONSTEXPR_DEFAULT constexpr BigInt<Bits, Signed, T> min() {
+  LIBC_INLINE static constexpr BigInt<Bits, Signed, T> min() {
     return BigInt<Bits, Signed, T>::min();
   }
   // Meant to match std::numeric_limits interface.
@@ -1186,7 +1186,7 @@ namespace cpp {
 
 // Specialization of cpp::bit_cast ('bit.h') from T to BigInt.
 template <typename To, typename From>
-LIBC_CONSTEXPR_DEFAULT LIBC_BIT_CAST_CONSTEXPR cpp::enable_if_t<
+LIBC_INLINE LIBC_BIT_CAST_CONSTEXPR cpp::enable_if_t<
     (sizeof(To) == sizeof(From)) && cpp::is_trivially_copyable<To>::value &&
         cpp::is_trivially_copyable<From>::value && is_big_int<To>::value,
     To>
@@ -1199,7 +1199,7 @@ bit_cast(const From &from) {
 
 // Specialization of cpp::bit_cast ('bit.h') from BigInt to T.
 template <typename To, size_t Bits>
-LIBC_CONSTEXPR_DEFAULT LIBC_BIT_CAST_CONSTEXPR
+LIBC_INLINE LIBC_BIT_CAST_CONSTEXPR
     cpp::enable_if_t<sizeof(To) == sizeof(UInt<Bits>) &&
                          cpp::is_trivially_constructible<To>::value &&
                          cpp::is_trivially_copyable<To>::value &&
@@ -1211,7 +1211,7 @@ LIBC_CONSTEXPR_DEFAULT LIBC_BIT_CAST_CONSTEXPR
 
 // Specialization of cpp::popcount ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 popcount(T value) {
   int bits = 0;
   for (auto word : value.val)
@@ -1222,7 +1222,7 @@ popcount(T value) {
 
 // Specialization of cpp::has_single_bit ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, bool>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, bool>
 has_single_bit(T value) {
   int bits = 0;
   for (auto word : value.val) {
@@ -1237,47 +1237,47 @@ has_single_bit(T value) {
 
 // Specialization of cpp::countr_zero ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 countr_zero(const T &value) {
   return multiword::countr_zero(value.val);
 }
 
 // Specialization of cpp::countl_zero ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 countl_zero(const T &value) {
   return multiword::countl_zero(value.val);
 }
 
 // Specialization of cpp::countl_one ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 countl_one(T value) {
   return multiword::countl_one(value.val);
 }
 
 // Specialization of cpp::countr_one ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 countr_one(T value) {
   return multiword::countr_one(value.val);
 }
 
 // Specialization of cpp::bit_width ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 bit_width(T value) {
   return cpp::numeric_limits<T>::digits - cpp::countl_zero(value);
 }
 
 // Forward-declare rotr so that rotl can use it.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, T>
 rotr(T value, int rotate);
 
 // Specialization of cpp::rotl ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, T>
 rotl(T value, int rotate) {
   constexpr int N = cpp::numeric_limits<T>::digits;
   rotate = rotate % N;
@@ -1291,7 +1291,7 @@ rotl(T value, int rotate) {
 
 // Specialization of cpp::rotr ('bit.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, T>
 rotr(T value, int rotate) {
   constexpr int N = cpp::numeric_limits<T>::digits;
   rotate = rotate % N;
@@ -1307,7 +1307,7 @@ rotr(T value, int rotate) {
 
 // Specialization of mask_trailing_ones ('math_extras.h') for BigInt.
 template <typename T, size_t count>
-LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T>
+LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, T>
 mask_trailing_ones() {
   static_assert(!T::SIGNED && count <= T::BITS);
   if (count == T::BITS)
@@ -1324,7 +1324,7 @@ mask_trailing_ones() {
 
 // Specialization of mask_leading_ones ('math_extras.h') for BigInt.
 template <typename T, size_t count>
-LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T> mask_leading_ones() {
+LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, T> mask_leading_ones() {
   static_assert(!T::SIGNED && count <= T::BITS);
   if (count == T::BITS)
     return T::all_ones();
@@ -1340,28 +1340,28 @@ LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T> mask_leadi
 
 // Specialization of mask_trailing_zeros ('math_extras.h') for BigInt.
 template <typename T, size_t count>
-LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T>
+LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, T>
 mask_trailing_zeros() {
   return mask_leading_ones<T, T::BITS - count>();
 }
 
 // Specialization of mask_leading_zeros ('math_extras.h') for BigInt.
 template <typename T, size_t count>
-LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, T>
+LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, T>
 mask_leading_zeros() {
   return mask_trailing_ones<T, T::BITS - count>();
 }
 
 // Specialization of count_zeros ('math_extras.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 count_zeros(T value) {
   return cpp::popcount(~value);
 }
 
 // Specialization of first_leading_zero ('math_extras.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 first_leading_zero(T value) {
   return value == cpp::numeric_limits<T>::max() ? 0
                                                 : cpp::countl_one(value) + 1;
@@ -1369,14 +1369,14 @@ first_leading_zero(T value) {
 
 // Specialization of first_leading_one ('math_extras.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 first_leading_one(T value) {
   return first_leading_zero(~value);
 }
 
 // Specialization of first_trailing_zero ('math_extras.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 first_trailing_zero(T value) {
   return value == cpp::numeric_limits<T>::max() ? 0
                                                 : cpp::countr_zero(~value) + 1;
@@ -1384,7 +1384,7 @@ first_trailing_zero(T value) {
 
 // Specialization of first_trailing_one ('math_extras.h') for BigInt.
 template <typename T>
-[[nodiscard]] LIBC_CONSTEXPR_DEFAULT constexpr cpp::enable_if_t<is_big_int_v<T>, int>
+[[nodiscard]] LIBC_INLINE constexpr cpp::enable_if_t<is_big_int_v<T>, int>
 first_trailing_one(T value) {
   return value == 0 ? 0 : cpp::countr_zero(value) + 1;
 }

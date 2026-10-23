@@ -147,7 +147,7 @@ class HighPrecisionDecimal {
   uint8_t digits[MAX_NUM_DIGITS];
 
 private:
-  LIBC_CONSTEXPR_DEFAULT bool should_round_up(int32_t round_to_digit,
+  LIBC_INLINE bool should_round_up(int32_t round_to_digit,
                                    RoundDirection round) {
     if (round_to_digit < 0 ||
         static_cast<uint32_t>(round_to_digit) >= this->num_digits) {
@@ -188,7 +188,7 @@ private:
 
   // Takes an amount to left shift and returns the number of new digits needed
   // to store the result based on LEFT_SHIFT_DIGIT_TABLE.
-  LIBC_CONSTEXPR_DEFAULT uint32_t get_num_new_digits(uint32_t lshift_amount) {
+  LIBC_INLINE uint32_t get_num_new_digits(uint32_t lshift_amount) {
     const char *power_of_five =
         LEFT_SHIFT_DIGIT_TABLE[lshift_amount].power_of_five;
     uint32_t new_digits = LEFT_SHIFT_DIGIT_TABLE[lshift_amount].new_digits;
@@ -211,7 +211,7 @@ private:
   }
 
   // Trim all trailing 0s
-  LIBC_CONSTEXPR_DEFAULT void trim_trailing_zeroes() {
+  LIBC_INLINE void trim_trailing_zeroes() {
     while (this->num_digits > 0 && this->digits[this->num_digits - 1] == 0) {
       --this->num_digits;
     }
@@ -223,7 +223,7 @@ private:
   // Perform a digitwise binary non-rounding right shift on this value by
   // shift_amount. The shift_amount can't be more than MAX_SHIFT_AMOUNT to
   // prevent overflow.
-  LIBC_CONSTEXPR_DEFAULT void right_shift(uint32_t shift_amount) {
+  LIBC_INLINE void right_shift(uint32_t shift_amount) {
     uint32_t read_index = 0;
     uint32_t write_index = 0;
 
@@ -280,7 +280,7 @@ private:
   // Perform a digitwise binary non-rounding left shift on this value by
   // shift_amount. The shift_amount can't be more than MAX_SHIFT_AMOUNT to
   // prevent overflow.
-  LIBC_CONSTEXPR_DEFAULT void left_shift(uint32_t shift_amount) {
+  LIBC_INLINE void left_shift(uint32_t shift_amount) {
     uint32_t new_digits = this->get_num_new_digits(shift_amount);
 
     int32_t read_index = static_cast<int32_t>(this->num_digits - 1);
@@ -334,7 +334,7 @@ public:
   // num_string is assumed to be a string of numeric characters. It doesn't
   // handle leading spaces.
   template <typename CharType>
-  LIBC_CONSTEXPR_DEFAULT HighPrecisionDecimal(
+  LIBC_INLINE HighPrecisionDecimal(
       const CharType *__restrict num_string,
       const size_t num_len = cpp::numeric_limits<size_t>::max()) {
     bool saw_dot = false;
@@ -402,7 +402,7 @@ public:
   }
 
   // Binary shift left (shift_amount > 0) or right (shift_amount < 0)
-  LIBC_CONSTEXPR_DEFAULT void shift(int shift_amount) {
+  LIBC_INLINE void shift(int shift_amount) {
     if (shift_amount == 0) {
       return;
     }
@@ -427,7 +427,7 @@ public:
   // Round the number represented to the closest value of unsigned int type T.
   // This is done ignoring overflow.
   template <class T>
-  LIBC_CONSTEXPR_DEFAULT T
+  LIBC_INLINE T
   round_to_integer_type(RoundDirection round = RoundDirection::Nearest) {
     T result = 0;
     uint32_t cur_digit = 0;
@@ -449,10 +449,10 @@ public:
 
   // Extra functions for testing.
 
-  LIBC_CONSTEXPR_DEFAULT uint8_t *get_digits() { return this->digits; }
-  LIBC_CONSTEXPR_DEFAULT uint32_t get_num_digits() { return this->num_digits; }
-  LIBC_CONSTEXPR_DEFAULT int32_t get_decimal_point() { return this->decimal_point; }
-  LIBC_CONSTEXPR_DEFAULT void set_truncated(bool trunc) { this->truncated = trunc; }
+  LIBC_INLINE uint8_t *get_digits() { return this->digits; }
+  LIBC_INLINE uint32_t get_num_digits() { return this->num_digits; }
+  LIBC_INLINE int32_t get_decimal_point() { return this->decimal_point; }
+  LIBC_INLINE void set_truncated(bool trunc) { this->truncated = trunc; }
 };
 
 } // namespace internal

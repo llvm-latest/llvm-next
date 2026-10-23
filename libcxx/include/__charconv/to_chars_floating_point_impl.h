@@ -11,8 +11,8 @@
 
 // This implementation is dedicated to the memory of Mary and Thavatchai.
 
-#ifndef _LIBCPP_SRC_INCLUDE_TO_CHARS_FLOATING_POINT_H
-#define _LIBCPP_SRC_INCLUDE_TO_CHARS_FLOATING_POINT_H
+#ifndef _LIBCPP___CHARCONV_TO_CHARS_FLOATING_POINT_IMPL_H
+#define _LIBCPP___CHARCONV_TO_CHARS_FLOATING_POINT_IMPL_H
 
 // Avoid formatting to keep the changes with the original code minimal.
 // clang-format off
@@ -22,11 +22,11 @@
 #include <__algorithm/lower_bound.h>
 #include <__algorithm/min.h>
 #include <__assert>
+#include <__bit/bit_cast.h>
 #include <__config>
 #include <__functional/operations.h>
 #include <__iterator/access.h>
 #include <__iterator/size.h>
-#include <bit>
 #include <cfloat>
 #include <climits>
 
@@ -119,7 +119,7 @@ to_chars_result _Floating_to_chars_hex_precision(
     using _Traits    = _Floating_type_traits<_Floating>;
     using _Uint_type = typename _Traits::_Uint_type;
 
-    const _Uint_type _Uint_value    = std::bit_cast<_Uint_type>(_Value);
+    const _Uint_type _Uint_value    = std::__bit_cast<_Uint_type>(_Value);
     const _Uint_type _Ieee_mantissa = _Uint_value & _Traits::_Denormal_mantissa_mask;
     const int32_t _Ieee_exponent    = static_cast<int32_t>(_Uint_value >> _Traits::_Exponent_shift);
 
@@ -348,7 +348,7 @@ to_chars_result _Floating_to_chars_hex_shortest(
     using _Traits    = _Floating_type_traits<_Floating>;
     using _Uint_type = typename _Traits::_Uint_type;
 
-    const _Uint_type _Uint_value = std::bit_cast<_Uint_type>(_Value);
+    const _Uint_type _Uint_value = std::__bit_cast<_Uint_type>(_Value);
 
     if (_Uint_value == 0) { // zero detected; write "0p+0" and return
         // C11 7.21.6.1 "The fprintf function"/8: "If the value is zero, the exponent is zero."
@@ -841,7 +841,7 @@ to_chars_result _Floating_to_chars_general_precision(
     using _Traits    = _Floating_type_traits<_Floating>;
     using _Uint_type = typename _Traits::_Uint_type;
 
-    const _Uint_type _Uint_value = std::bit_cast<_Uint_type>(_Value);
+    const _Uint_type _Uint_value = std::__bit_cast<_Uint_type>(_Value);
 
     if (_Uint_value == 0) { // zero detected; write "0" and return; _Precision is irrelevant due to zero-trimming
         if (_First == _Last) {
@@ -1006,7 +1006,7 @@ to_chars_result _Floating_to_chars(
     using _Traits    = _Floating_type_traits<_Floating>;
     using _Uint_type = typename _Traits::_Uint_type;
 
-    _Uint_type _Uint_value = std::bit_cast<_Uint_type>(_Value);
+    _Uint_type _Uint_value = std::__bit_cast<_Uint_type>(_Value);
 
     const bool _Was_negative = (_Uint_value & _Traits::_Shifted_sign_mask) != 0;
 
@@ -1018,7 +1018,7 @@ to_chars_result _Floating_to_chars(
         *_First++ = '-';
 
         _Uint_value &= ~_Traits::_Shifted_sign_mask;
-        _Value = std::bit_cast<_Floating>(_Uint_value);
+        _Value = std::__bit_cast<_Floating>(_Uint_value);
     }
 
     if ((_Uint_value & _Traits::_Shifted_exponent_mask) == _Traits::_Shifted_exponent_mask) {
@@ -1081,4 +1081,4 @@ to_chars_result _Floating_to_chars(
 
 _LIBCPP_END_NAMESPACE_STD
 
-#endif // _LIBCPP_SRC_INCLUDE_TO_CHARS_FLOATING_POINT_H
+#endif // _LIBCPP___CHARCONV_TO_CHARS_FLOATING_POINT_IMPL_H

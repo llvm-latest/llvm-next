@@ -31,15 +31,10 @@ _LIBCPP_DIAGNOSTIC_POP
 #endif // _LIBCPP_AVAILABILITY_MINIMUM_HEADER_VERSION < 15
 
 // The to_chars overloads are now defined inline constexpr in the public header
-// <__charconv/to_chars_floating_point.h>. The definitions below were provided
-// here for ABI compatibility with older callers; they remain because the inline
-// definitions above are emitted per TU and do not replace a shared-library symbol.
-//
-// However, since they are now inline, out-of-line definitions would be
-// ill-formed (redefinition). The only exported out-of-line definitions that
-// remain below are the __from_chars_floating_point primary template and its
-// explicit instantiations, which still live here until the from_chars
-// implementation is also made fully header-only.
+// <__charconv/to_chars_floating_point.h>, so no out-of-line definitions are
+// needed here. The exported __from_chars_floating_point entry points are kept
+// for ABI compatibility and are still used at run time, while the constant
+// evaluation path uses the header-only implementation.
 
 template <class _Fp>
 __from_chars_result<_Fp> __from_chars_floating_point(

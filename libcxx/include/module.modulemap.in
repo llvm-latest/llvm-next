@@ -936,7 +936,14 @@ module std [system] {
 
   module charconv {
     module chars_format               { header "__charconv/chars_format.h" }
-    module from_chars_floating_point  { header "__charconv/from_chars_floating_point.h" }
+    module from_chars_floating_point  {
+      header "__charconv/from_chars_floating_point.h"
+      export *
+    }
+    module from_chars_floating_point_impl {
+      textual header "__charconv/from_chars_floating_point_impl.h"
+      export *
+    }
     module from_chars_integral        { header "__charconv/from_chars_integral.h" }
     module from_chars_result          {
       header "__charconv/from_chars_result.h"
@@ -945,7 +952,14 @@ module std [system] {
     module tables                     { header "__charconv/tables.h" }
     module to_chars                   { header "__charconv/to_chars.h" }
     module to_chars_base_10           { header "__charconv/to_chars_base_10.h" }
-    module to_chars_floating_point    { header "__charconv/to_chars_floating_point.h" }
+    module to_chars_floating_point    {
+      header "__charconv/to_chars_floating_point.h"
+      export *
+    }
+    module to_chars_floating_point_impl {
+      textual header "__charconv/to_chars_floating_point_impl.h"
+      export *
+    }
     module to_chars_integral          {
       header "__charconv/to_chars_integral.h"
       export std.charconv.to_chars_result
