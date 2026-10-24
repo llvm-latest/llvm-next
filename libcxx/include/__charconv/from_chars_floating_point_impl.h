@@ -71,8 +71,11 @@ struct __from_chars_float_traits<float> {
   static constexpr int __max_exponent  = 128;
   static constexpr int __min_exponent  = -125;
   // Clamping bound for parsed decimal exponents. Any exponent beyond this range
-  // results in overflow or underflow for every possible mantissa.
-  static constexpr int __decimal_clamp = 60;
+  // results in overflow or underflow for every possible mantissa. The mantissa
+  // can be as large as ~1.8e19 (fits in uint64_t), so the bound must account for
+  // that: for underflow we need 1.8e19 * 10^exp < FLT_TRUE_MIN (~1.4e-45),
+  // giving exp < -64; for overflow 10^exp > FLT_MAX (~3.4e38), giving exp > 38.
+  static constexpr int __decimal_clamp = 80;
   // Bound used for the binary exponent of hexadecimal values.
   static constexpr int __max_biased_exponent = 255;
 };
@@ -132,31 +135,34 @@ struct __fc_bignum {
   }
 
   constexpr void __shift_left(size_t __bits) {
-    if (__size == 0)
+    if (__size == 0 || __bits == 0)
       return;
 
     const size_t __whole = __bits / 32;
     const size_t __part  = __bits % 32;
 
-    if (__part == 0) {
-      for (size_t __i = __size; __i-- != 0;)
-        __limbs[__i + __whole] = __limbs[__i];
-    } else {
+    // First, shift by whole limbs. Process from high to low so that we never
+    // overwrite a limb before it has been read.
+    for (size_t __i = __size; __i-- != 0;)
+      __limbs[__i + __whole] = __limbs[__i];
+    for (size_t __i = 0; __i != __whole; ++__i)
+      __limbs[__i] = 0;
+    __size += __whole;
+
+    // Then, shift by the remaining part bits within each limb. At this point
+    // the data lives in limbs [__whole, __size), and shifting within a limb
+    // reads and writes the same limb, so there is no aliasing hazard.
+    if (__part != 0) {
       uint32_t __carry = 0;
-      for (size_t __i = 0; __i != __size; ++__i) {
-        const uint32_t __tmp = __limbs[__i];
-        __limbs[__i + __whole] = (__tmp << __part) | __carry;
+      for (size_t __i = __whole; __i != __size; ++__i) {
+        const uint32_t __tmp   = __limbs[__i];
+        __limbs[__i]           = (__tmp << __part) | __carry;
         __carry                = __tmp >> (32 - __part);
       }
       if (__carry != 0)
-        __limbs[__size + __whole] = __carry;
-      __size += __carry != 0 ? 1 : 0;
+        __limbs[__size++] = __carry;
     }
 
-    for (size_t __i = 0; __i != __whole; ++__i)
-      __limbs[__i] = 0;
-
-    __size += __whole;
     __normalize();
   }
 
@@ -383,7 +389,7 @@ __fc_round_to_float(uint64_t __significand, int32_t __exp2, bool __sticky, bool 
 // parsing.
 template <class _Fp>
 inline _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI __from_chars_result<_Fp>
-__fc_decimal_to_float(typename __from_chars_float_traits<_Fp>::_Uint_type __mantissa, int64_t __exp10,
+__fc_decimal_to_float(uint64_t __mantissa, int64_t __exp10,
                       bool __truncated, bool __negative, ptrdiff_t __n) {
   using __traits = __from_chars_float_traits<_Fp>;
 
@@ -438,7 +444,7 @@ __fc_decimal_to_float(typename __from_chars_float_traits<_Fp>::_Uint_type __mant
 // Converts `__mantissa * 2^__exp2` to `_Fp`.
 template <class _Fp>
 inline _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI __from_chars_result<_Fp>
-__fc_binary_to_float(typename __from_chars_float_traits<_Fp>::_Uint_type __mantissa, int32_t __exp2,
+__fc_binary_to_float(uint64_t __mantissa, int32_t __exp2,
                      bool __truncated, bool __negative, ptrdiff_t __n) {
   if (__mantissa == 0)
     return {__negative ? -_Fp(0) : _Fp(0), __n, errc{}};
@@ -521,7 +527,11 @@ inline _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI __fc_fractional_const
 __fc_parse_decimal_fractional(const char* __input, ptrdiff_t __n, ptrdiff_t __offset) {
   __fc_fractional_constant_result __result;
 
-  const uint64_t __threshold = static_cast<uint64_t>(numeric_limits<_Tp>::max()) / 10;
+  // The mantissa is stored in a uint64_t, so use the full 64-bit range as the
+  // truncation threshold. Using _Tp (which is 32 bits for float) here would
+  // lose precision and cause incorrect rounding for values with more than
+  // ~10 significant decimal digits.
+  const uint64_t __threshold = numeric_limits<uint64_t>::max() / 10;
   bool __fraction            = false;
   for (; __offset < __n; ++__offset) {
     if (__fc_isdigit(__input[__offset])) {
@@ -557,7 +567,7 @@ inline _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI __fc_fractional_const
 __fc_parse_hex_fractional(const char* __input, ptrdiff_t __n, ptrdiff_t __offset) {
   __fc_fractional_constant_result __result;
 
-  const uint64_t __threshold = static_cast<uint64_t>(numeric_limits<_Tp>::max()) / 16;
+  const uint64_t __threshold = numeric_limits<uint64_t>::max() / 16;
   bool __fraction            = false;
   for (; __offset < __n; ++__offset) {
     if (__fc_isxdigit(__input[__offset])) {
@@ -682,7 +692,7 @@ __fc_from_chars_hex(const char* const __first, const char* __last, const char* _
   const int32_t __exponent =
       __fc_merge_exponents(__fractional.__exponent, __parsed_exponent.__value, __traits::__max_biased_exponent);
 
-  return __fc_binary_to_float<_Fp>(static_cast<__uint>(__fractional.__mantissa), __exponent,
+  return __fc_binary_to_float<_Fp>(__fractional.__mantissa, __exponent,
                                    __fractional.__truncated, __negative, __offset);
 }
 
@@ -716,7 +726,7 @@ __fc_from_chars_decimal(const char* const __first, const char* __last, chars_for
     __exponent = __fc_merge_exponents(__fractional.__exponent, __parsed_exponent.__value, __traits::__decimal_clamp);
   }
 
-  return __fc_decimal_to_float<_Fp>(static_cast<__uint>(__fractional.__mantissa), __exponent,
+  return __fc_decimal_to_float<_Fp>(__fractional.__mantissa, __exponent,
                                     __fractional.__truncated, __negative, __offset);
 }
 
