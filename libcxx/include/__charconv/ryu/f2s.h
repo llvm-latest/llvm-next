@@ -43,6 +43,8 @@
 // clang-format off
 
 #include <__assert>
+#include <__charconv/chars_format.h>
+#include <__charconv/to_chars_result.h>
 #include <__config>
 #include <__cstddef/ptrdiff_t.h>
 #include <cstdint>
@@ -51,8 +53,6 @@
 #include "d2fixed.h"
 #include "d2s_intrinsics.h"
 #include "digit_table.h"
-#include "f2s.h"
-#include "ryu.h"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -624,14 +624,14 @@ struct __floating_decimal_32 {
     _Output /= 10000;
     const uint32_t __c0 = (__c % 100) << 1;
     const uint32_t __c1 = (__c / 100) << 1;
-    __result[__olength - __i - 1] = __DIGIT_TABLE[__c0 + 1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c0];
-    __result[__olength - __i - 3] = __DIGIT_TABLE[__c1 + 1]; __result[__olength - __i - 4] = __DIGIT_TABLE[__c1];
+    __result[__olength - __i - 1] = __DIGIT_TABLE[__c0]; __result[__olength - __i] = __DIGIT_TABLE[__c0 + 1];
+    __result[__olength - __i - 3] = __DIGIT_TABLE[__c1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c1 + 1];
     __i += 4;
   }
   if (_Output >= 100) {
     const uint32_t __c = (_Output % 100) << 1;
     _Output /= 100;
-    __result[__olength - __i - 1] = __DIGIT_TABLE[__c + 1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c];
+    __result[__olength - __i - 1] = __DIGIT_TABLE[__c]; __result[__olength - __i] = __DIGIT_TABLE[__c + 1];
     __i += 2;
   }
   if (_Output >= 10) {

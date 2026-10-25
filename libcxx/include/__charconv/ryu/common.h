@@ -49,6 +49,13 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
+// These are used by both d2s.h and d2fixed.h. They used to be defined in d2s.h,
+// but d2fixed.h must not include d2s.h (that would create a cycle), so they
+// live here.
+inline constexpr int __DOUBLE_MANTISSA_BITS = 52;
+inline constexpr int __DOUBLE_EXPONENT_BITS = 11;
+inline constexpr int __DOUBLE_BIAS = 1023;
+
 [[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline uint32_t __decimalLength9(const uint32_t __v) {
   // Function precondition: __v is not a 10-digit number.
   // (f2s: 9 digits are sufficient for round-tripping.)

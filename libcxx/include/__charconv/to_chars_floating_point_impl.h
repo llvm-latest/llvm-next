@@ -30,6 +30,11 @@
 #include <cfloat>
 #include <climits>
 
+// The implementation below formats exponents by calling the integral overload
+// of std::to_chars, so that overload must be declared before this header is
+// parsed.
+#include <__charconv/to_chars_integral.h>
+
 #include "ryu/ryu.h"
 
 _LIBCPP_BEGIN_NAMESPACE_STD

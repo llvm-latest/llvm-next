@@ -45,7 +45,6 @@
 #include <__assert>
 #include <__config>
 
-#include "ryu.h"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 

@@ -43,6 +43,8 @@
 // clang-format off
 
 #include <__assert>
+#include <__charconv/chars_format.h>
+#include <__charconv/to_chars_result.h>
 #include <__config>
 #include <__cstddef/ptrdiff_t.h>
 #include <cstddef>
@@ -50,15 +52,11 @@
 
 #include "common.h"
 #include "d2fixed.h"
+#include "d2s_full_table.h"
 #include "d2s_intrinsics.h"
 #include "digit_table.h"
-#include "ryu.h"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
-
-inline constexpr int __DOUBLE_MANTISSA_BITS = 52;
-inline constexpr int __DOUBLE_EXPONENT_BITS = 11;
-inline constexpr int __DOUBLE_BIAS = 1023;
 
 inline constexpr int __DOUBLE_POW5_INV_BITCOUNT = 122;
 inline constexpr int __DOUBLE_POW5_BITCOUNT = 121;
@@ -615,10 +613,10 @@ struct __floating_decimal_64 {
     const uint32_t __c1 = (__c / 100) << 1;
     const uint32_t __d0 = (__d % 100) << 1;
     const uint32_t __d1 = (__d / 100) << 1;
-    __result[__olength - __i - 1] = __DIGIT_TABLE[__c0 + 1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c0];
-    __result[__olength - __i - 3] = __DIGIT_TABLE[__c1 + 1]; __result[__olength - __i - 4] = __DIGIT_TABLE[__c1];
-    __result[__olength - __i - 5] = __DIGIT_TABLE[__d0 + 1]; __result[__olength - __i - 6] = __DIGIT_TABLE[__d0];
-    __result[__olength - __i - 7] = __DIGIT_TABLE[__d1 + 1]; __result[__olength - __i - 8] = __DIGIT_TABLE[__d1];
+    __result[__olength - __i - 1] = __DIGIT_TABLE[__c0]; __result[__olength - __i] = __DIGIT_TABLE[__c0 + 1];
+    __result[__olength - __i - 3] = __DIGIT_TABLE[__c1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c1 + 1];
+    __result[__olength - __i - 5] = __DIGIT_TABLE[__d0]; __result[__olength - __i - 4] = __DIGIT_TABLE[__d0 + 1];
+    __result[__olength - __i - 7] = __DIGIT_TABLE[__d1]; __result[__olength - __i - 6] = __DIGIT_TABLE[__d1 + 1];
     __i += 8;
   }
   uint32_t __output2 = static_cast<uint32_t>(_Output);
@@ -631,14 +629,14 @@ struct __floating_decimal_64 {
     __output2 /= 10000;
     const uint32_t __c0 = (__c % 100) << 1;
     const uint32_t __c1 = (__c / 100) << 1;
-    __result[__olength - __i - 1] = __DIGIT_TABLE[__c0 + 1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c0];
-    __result[__olength - __i - 3] = __DIGIT_TABLE[__c1 + 1]; __result[__olength - __i - 4] = __DIGIT_TABLE[__c1];
+    __result[__olength - __i - 1] = __DIGIT_TABLE[__c0]; __result[__olength - __i] = __DIGIT_TABLE[__c0 + 1];
+    __result[__olength - __i - 3] = __DIGIT_TABLE[__c1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c1 + 1];
     __i += 4;
   }
   if (__output2 >= 100) {
     const uint32_t __c = (__output2 % 100) << 1;
     __output2 /= 100;
-    __result[__olength - __i - 1] = __DIGIT_TABLE[__c + 1]; __result[__olength - __i - 2] = __DIGIT_TABLE[__c];
+    __result[__olength - __i - 1] = __DIGIT_TABLE[__c]; __result[__olength - __i] = __DIGIT_TABLE[__c + 1];
     __i += 2;
   }
   if (__output2 >= 10) {

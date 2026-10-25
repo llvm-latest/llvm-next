@@ -46,10 +46,11 @@
 #include <__config>
 #include <__cstddef/ptrdiff_t.h>
 #include <cstdint>
+#include <__charconv/chars_format.h>
+#include <__charconv/to_chars_result.h>
 
 #include "common.h"
 #include "d2fixed_full_table.h"
-#include "d2s.h"
 #include "d2s_intrinsics.h"
 #include "digit_table.h"
 

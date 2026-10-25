@@ -47,12 +47,9 @@
 #include <__charconv/to_chars_result.h>
 #include <__config>
 #include <__system_error/errc.h>
+#include <__type_traits/is_same.h>
 #include <cstdint>
 #include <type_traits>
-
-#include "f2s.h"
-#include "d2s.h"
-#include "d2fixed.h"
 
 #if defined(_MSC_VER)
 #include <intrin.h> // for _umul128(), __shiftright128(), _BitScanForward{,64}
@@ -62,12 +59,16 @@
 #define _LIBCPP_64_BIT
 #endif
 
+// The implementation used to live in separate .cpp files, which included this
+// header before defining the conversion functions. Now that the definitions
+// are part of the headers, the helpers below must be declared before f2s.h,
+// d2s.h and d2fixed.h are parsed, so define them first and then include the
+// implementation headers.
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-// https://github.com/ulfjack/ryu/tree/59661c3/ryu
-
 #if !defined(_MSC_VER)
-_LIBCPP_HIDE_FROM_ABI inline unsigned char _BitScanForward64(unsigned long* __index, unsigned long long __mask) {
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline unsigned char
+_BitScanForward64(unsigned long* __index, unsigned long long __mask) {
   if (__mask == 0) {
     return false;
   }
@@ -75,14 +76,25 @@ _LIBCPP_HIDE_FROM_ABI inline unsigned char _BitScanForward64(unsigned long* __in
   return true;
 }
 
-_LIBCPP_HIDE_FROM_ABI inline unsigned char _BitScanForward(unsigned long* __index, unsigned int __mask) {
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline unsigned char
+_BitScanForward(unsigned long* __index, unsigned int __mask) {
   if (__mask == 0) {
     return false;
   }
   *__index = __builtin_ctz(__mask);
   return true;
 }
-#endif  // !_MSC_VER
+#endif // !_MSC_VER
+
+_LIBCPP_END_NAMESPACE_STD
+
+#include "f2s.h"
+#include "d2s.h"
+#include "d2fixed.h"
+
+_LIBCPP_BEGIN_NAMESPACE_STD
+
+// https://github.com/ulfjack/ryu/tree/59661c3/ryu
 
 template <class _Floating>
 [[nodiscard]] _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_HIDE_FROM_ABI to_chars_result _Floating_to_chars_ryu(
