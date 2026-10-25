@@ -72,7 +72,7 @@ TEST_CONSTEXPR_CXX26 void test_success() {
     std::from_chars_result r = std::from_chars(s, s + 5, value, std::chars_format::hex);
     assert(r.ec == std::errc{});
     assert(r.ptr == s + 5);
-    assert(value == F(-1));
+    assert(value == F(-0.625));
   }
   { // infinity, case insensitive, with and without the "inity" suffix
     const char s[] = "-INFINITY";
