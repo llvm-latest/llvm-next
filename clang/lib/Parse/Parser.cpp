@@ -71,6 +71,7 @@ Parser::Parser(Preprocessor &pp, Sema &actions, bool skipFunctionBodies)
   Actions.CurScope = nullptr;
   NumCachedScopes = 0;
   CurParsedObjCImpl = nullptr;
+  PendingTagTypeAttrs = nullptr;
 
   // Add #pragma handlers. These are removed and destroyed in the
   // destructor.
@@ -613,8 +614,6 @@ void Parser::Initialize() {
     PP.SetPoisonReason(Ident_AbnormalTermination,diag::err_seh___finally_block);
   }
 
-  PendingTagTypeAttrs = nullptr;
-
   Actions.Initialize();
 
   // Prime the lexer look-ahead.
@@ -1108,8 +1107,7 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
   DS.SetRangeEnd(DeclSpecAttrs.Range.getEnd());
   DS.takeAttributesAppendingingFrom(DeclSpecAttrs);
 
-  if (!Attrs.empty())
-    PendingTagTypeAttrs = &Attrs;
+  PendingTagTypeAttrs = Attrs.empty() ? nullptr : &Attrs;
 
   ParsedTemplateInfo TemplateInfo;
   MaybeParseMicrosoftAttributes(DS.getAttributes());
