@@ -36,27 +36,26 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-#ifndef _LIBCPP_SRC_INCLUDE_RYU_DS2_H
-#define _LIBCPP_SRC_INCLUDE_RYU_DS2_H
+#ifndef _LIBCPP___CHARCONV_RYU_DIGIT_TABLE_H
+#define _LIBCPP___CHARCONV_RYU_DIGIT_TABLE_H
 
-// Avoid formatting to keep the changes with the original code minimal.
-// clang-format off
-
+#include <__charconv/tables.h>
 #include <__config>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#  pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-inline constexpr int __DOUBLE_MANTISSA_BITS = 52;
-inline constexpr int __DOUBLE_EXPONENT_BITS = 11;
-inline constexpr int __DOUBLE_BIAS = 1023;
-
-inline constexpr int __DOUBLE_POW5_INV_BITCOUNT = 122;
-inline constexpr int __DOUBLE_POW5_BITCOUNT = 121;
-
-[[nodiscard]] to_chars_result __d2s_buffered_n(char* const _First, char* const _Last, const double __f, const chars_format _Fmt);
+// A table of all two-digit numbers. This is used to speed up decimal digit
+// generation by copying pairs of digits into the final output.
+//
+// In order to minimize the diff in the Ryu code between MSVC STL and libc++
+// the code uses the name __DIGIT_TABLE. In order to avoid code duplication it
+// reuses the table already available in libc++.
+inline constexpr auto& __DIGIT_TABLE = __itoa::__digits_base_10;
 
 _LIBCPP_END_NAMESPACE_STD
 
-// clang-format on
-
-#endif // _LIBCPP_SRC_INCLUDE_RYU_DS2_H
+#endif // _LIBCPP___CHARCONV_RYU_DIGIT_TABLE_H

@@ -18,15 +18,6 @@ set(LIBCXX_SOURCES
   include/atomic_support.h
   include/config_elast.h
   include/refstring.h
-  include/ryu/common.h
-  include/ryu/d2fixed.h
-  include/ryu/d2fixed_full_table.h
-  include/ryu/d2s.h
-  include/ryu/d2s_full_table.h
-  include/ryu/d2s_intrinsics.h
-  include/ryu/digit_table.h
-  include/ryu/f2s.h
-  include/ryu/ryu.h
   include/to_chars_floating_point.h
   include/from_chars_floating_point.h
   memory.cpp
@@ -36,9 +27,6 @@ set(LIBCXX_SOURCES
   optional.cpp
   print.cpp
   random_shuffle.cpp
-  ryu/d2fixed.cpp
-  ryu/d2s.cpp
-  ryu/f2s.cpp
   stdexcept.cpp
   string.cpp
   support/runtime/exception_fallback.ipp

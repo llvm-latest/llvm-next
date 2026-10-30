@@ -937,15 +937,35 @@ module std [system] {
   module charconv {
     module chars_format               { header "__charconv/chars_format.h" }
     module from_chars_floating_point  { header "__charconv/from_chars_floating_point.h" }
+    module from_chars_floating_point_impl {
+      header "__charconv/from_chars_floating_point_impl.h"
+      export *
+    }
     module from_chars_integral        { header "__charconv/from_chars_integral.h" }
     module from_chars_result          {
       header "__charconv/from_chars_result.h"
       export std.system_error.errc
     }
+    module ryu {
+      header "__charconv/ryu/common.h"
+      header "__charconv/ryu/d2fixed.h"
+      header "__charconv/ryu/d2fixed_full_table.h"
+      header "__charconv/ryu/d2s.h"
+      header "__charconv/ryu/d2s_full_table.h"
+      header "__charconv/ryu/d2s_intrinsics.h"
+      header "__charconv/ryu/digit_table.h"
+      header "__charconv/ryu/f2s.h"
+      header "__charconv/ryu/ryu.h"
+      export *
+    }
     module tables                     { header "__charconv/tables.h" }
     module to_chars                   { header "__charconv/to_chars.h" }
     module to_chars_base_10           { header "__charconv/to_chars_base_10.h" }
     module to_chars_floating_point    { header "__charconv/to_chars_floating_point.h" }
+    module to_chars_floating_point_impl {
+      header "__charconv/to_chars_floating_point_impl.h"
+      export *
+    }
     module to_chars_integral          {
       header "__charconv/to_chars_integral.h"
       export std.charconv.to_chars_result

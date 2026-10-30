@@ -22,6 +22,7 @@
 #include <__system_error/errc.h>
 #include <__type_traits/enable_if.h>
 #include <__type_traits/integral_constant.h>
+#include <__type_traits/is_constant_evaluated.h>
 #include <__type_traits/is_integral.h>
 #include <__type_traits/is_same.h>
 #include <__type_traits/is_signed.h>
@@ -59,6 +60,16 @@ __to_chars_itoa(char* __first, char* __last, _Tp __value, true_type) {
 template <typename _Tp>
 inline _LIBCPP_CONSTEXPR_SINCE_CXX23 _LIBCPP_HIDE_FROM_ABI __to_chars_result
 __to_chars_itoa(char* __first, char* __last, _Tp __value, false_type) {
+#if __has_builtin(__builtin_to_chars)
+  if (std::__libcpp_is_constant_evaluated()) {
+    // The compiler evaluates this in its own arbitrary-precision arithmetic,
+    // so the conversion does not consume the constant-evaluation step budget.
+    char* __end = __builtin_to_chars(__first, __last, __value, 10);
+    if (__end == nullptr)
+      return {__last, errc::value_too_large};
+    return {__end, errc(0)};
+  }
+#endif
   using __tx  = __itoa::__traits<_Tp>;
   auto __diff = __last - __first;
 
@@ -78,6 +89,15 @@ __to_chars_itoa(char* __first, char* __last, __uint128_t __value, false_type) {
   // NOTE the 128-bit code path requires this optimization.
   if (__value <= numeric_limits<uint64_t>::max())
     return __to_chars_itoa(__first, __last, static_cast<uint64_t>(__value), false_type());
+
+#if __has_builtin(__builtin_to_chars)
+  if (std::__libcpp_is_constant_evaluated()) {
+    char* __end = __builtin_to_chars(__first, __last, __value, 10);
+    if (__end == nullptr)
+      return {__last, errc::value_too_large};
+    return {__end, errc(0)};
+  }
+#endif
 
   using __tx  = __itoa::__traits<__uint128_t>;
   auto __diff = __last - __first;

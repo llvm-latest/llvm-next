@@ -36,23 +36,31 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+#ifndef _LIBCPP___CHARCONV_RYU_D2S_H
+#define _LIBCPP___CHARCONV_RYU_D2S_H
+
 // Avoid formatting to keep the changes with the original code minimal.
 // clang-format off
 
 #include <__assert>
+#include <__charconv/chars_format.h>
+#include <__charconv/to_chars_integral.h>
+#include <__charconv/to_chars_result.h>
 #include <__config>
-#include <charconv>
+#include <__system_error/errc.h>
 #include <cstddef>
+#include <cstdint>
+#include "common.h"
+#include "d2s_intrinsics.h"
+#include "d2s_full_table.h"
+#include "digit_table.h"
 
-#include "include/ryu/common.h"
-#include "include/ryu/d2fixed.h"
-#include "include/ryu/d2s.h"
-#include "include/ryu/d2s_full_table.h"
-#include "include/ryu/d2s_intrinsics.h"
-#include "include/ryu/digit_table.h"
-#include "include/ryu/ryu.h"
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#  pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
+
 
 // We need a 64x128-bit multiplication and a subsequent 128-bit shift.
 // Multiplication:
@@ -93,7 +101,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 //       results are not perfectly aligned.
 #ifdef _LIBCPP_INTRINSIC128
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint64_t __mulShift(const uint64_t __m, const uint64_t* const __mul, const int32_t __j) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX26 uint64_t __mulShift(const uint64_t __m, const uint64_t* const __mul, const int32_t __j) {
   // __m is maximum 55 bits
   uint64_t __high1;                                               // 128
   const uint64_t __low1 = __ryu_umul128(__m, __mul[1], &__high1); // 64
@@ -106,7 +114,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
   return __ryu_shiftright128(__sum, __high1, static_cast<uint32_t>(__j - 64));
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint64_t __mulShiftAll(const uint64_t __m, const uint64_t* const __mul, const int32_t __j,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX26 uint64_t __mulShiftAll(const uint64_t __m, const uint64_t* const __mul, const int32_t __j,
   uint64_t* const __vp, uint64_t* const __vm, const uint32_t __mmShift) {
   *__vp = __mulShift(4 * __m + 2, __mul, __j);
   *__vm = __mulShift(4 * __m - 1 - __mmShift, __mul, __j);
@@ -115,7 +123,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 #else // ^^^ intrinsics available ^^^ / vvv intrinsics unavailable vvv
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_ALWAYS_INLINE uint64_t __mulShiftAll(uint64_t __m, const uint64_t* const __mul, const int32_t __j,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX26 _LIBCPP_ALWAYS_INLINE uint64_t __mulShiftAll(uint64_t __m, const uint64_t* const __mul, const int32_t __j,
   uint64_t* const __vp, uint64_t* const __vm, const uint32_t __mmShift) { // TRANSITION, VSO-634761
   __m <<= 1;
   // __m is maximum 55 bits
@@ -150,7 +158,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 #endif // ^^^ intrinsics unavailable ^^^
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline uint32_t __decimalLength17(const uint64_t __v) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX26 uint32_t __decimalLength17(const uint64_t __v) {
   // This is slightly faster than a loop.
   // The average output length is 16.38 digits, so we check high-to-low.
   // Function precondition: __v is not an 18, 19, or 20-digit number.
@@ -181,7 +189,7 @@ struct __floating_decimal_64 {
   int32_t __exponent;
 };
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline __floating_decimal_64 __d2d(const uint64_t __ieeeMantissa, const uint32_t __ieeeExponent) {
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX26 __floating_decimal_64 __d2d(const uint64_t __ieeeMantissa, const uint32_t __ieeeExponent) {
   int32_t __e2;
   uint64_t __m2;
   if (__ieeeExponent == 0) {
@@ -353,7 +361,7 @@ struct __floating_decimal_64 {
   return __fd;
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline to_chars_result __to_chars(char* const _First, char* const _Last, const __floating_decimal_64 __v,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX26 to_chars_result __to_chars(char* const _First, char* const _Last, const __floating_decimal_64 __v,
   chars_format _Fmt, const double __f) {
   // Step 5: Print the decimal representation.
   uint64_t _Output = __v.__mantissa;
@@ -528,10 +536,10 @@ struct __floating_decimal_64 {
       const uint32_t __d0 = (__d % 100) << 1;
       const uint32_t __d1 = (__d / 100) << 1;
 
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __d0, 2);
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __d1, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __d0, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __d1, 2);
     }
     uint32_t __output2 = static_cast<uint32_t>(_Output);
     while (__output2 >= 10000) {
@@ -543,35 +551,35 @@ struct __floating_decimal_64 {
       __output2 /= 10000;
       const uint32_t __c0 = (__c % 100) << 1;
       const uint32_t __c1 = (__c / 100) << 1;
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __c0, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __c1, 2);
     }
     if (__output2 >= 100) {
       const uint32_t __c = (__output2 % 100) << 1;
       __output2 /= 100;
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
     }
     if (__output2 >= 10) {
       const uint32_t __c = __output2 << 1;
-      std::memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
+      std::__ryu_memcpy(_Mid -= 2, __DIGIT_TABLE + __c, 2);
     } else {
       *--_Mid = static_cast<char>('0' + __output2);
     }
 
     if (_Ryu_exponent > 0) { // case "172900" with _Can_use_ryu
       // Performance note: it might be more efficient to do this immediately after setting _Mid.
-      std::memset(_First + __olength, '0', static_cast<size_t>(_Ryu_exponent));
+      std::__ryu_memset(_First + __olength, '0', static_cast<size_t>(_Ryu_exponent));
     } else if (_Ryu_exponent == 0) { // case "1729"
       // Done!
     } else if (_Whole_digits > 0) { // case "17.29"
       // Performance note: moving digits might not be optimal.
-      std::memmove(_First, _First + 1, static_cast<size_t>(_Whole_digits));
+      std::__ryu_memmove(_First, _First + 1, static_cast<size_t>(_Whole_digits));
       _First[_Whole_digits] = '.';
     } else { // case "0.001729"
       // Performance note: a larger memset() followed by overwriting '.' might be more efficient.
       _First[0] = '0';
       _First[1] = '.';
-      std::memset(_First + 2, '0', static_cast<size_t>(-_Whole_digits));
+      std::__ryu_memset(_First + 2, '0', static_cast<size_t>(-_Whole_digits));
     }
 
     return { _First + _Total_fixed_length, errc{} };
@@ -603,10 +611,10 @@ struct __floating_decimal_64 {
     const uint32_t __c1 = (__c / 100) << 1;
     const uint32_t __d0 = (__d % 100) << 1;
     const uint32_t __d1 = (__d / 100) << 1;
-    std::memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c0, 2);
-    std::memcpy(__result + __olength - __i - 3, __DIGIT_TABLE + __c1, 2);
-    std::memcpy(__result + __olength - __i - 5, __DIGIT_TABLE + __d0, 2);
-    std::memcpy(__result + __olength - __i - 7, __DIGIT_TABLE + __d1, 2);
+    std::__ryu_memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c0, 2);
+    std::__ryu_memcpy(__result + __olength - __i - 3, __DIGIT_TABLE + __c1, 2);
+    std::__ryu_memcpy(__result + __olength - __i - 5, __DIGIT_TABLE + __d0, 2);
+    std::__ryu_memcpy(__result + __olength - __i - 7, __DIGIT_TABLE + __d1, 2);
     __i += 8;
   }
   uint32_t __output2 = static_cast<uint32_t>(_Output);
@@ -619,14 +627,14 @@ struct __floating_decimal_64 {
     __output2 /= 10000;
     const uint32_t __c0 = (__c % 100) << 1;
     const uint32_t __c1 = (__c / 100) << 1;
-    std::memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c0, 2);
-    std::memcpy(__result + __olength - __i - 3, __DIGIT_TABLE + __c1, 2);
+    std::__ryu_memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c0, 2);
+    std::__ryu_memcpy(__result + __olength - __i - 3, __DIGIT_TABLE + __c1, 2);
     __i += 4;
   }
   if (__output2 >= 100) {
     const uint32_t __c = (__output2 % 100) << 1;
     __output2 /= 100;
-    std::memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c, 2);
+    std::__ryu_memcpy(__result + __olength - __i - 1, __DIGIT_TABLE + __c, 2);
     __i += 2;
   }
   if (__output2 >= 10) {
@@ -658,18 +666,18 @@ struct __floating_decimal_64 {
 
   if (_Scientific_exponent >= 100) {
     const int32_t __c = _Scientific_exponent % 10;
-    std::memcpy(__result + __index, __DIGIT_TABLE + 2 * (_Scientific_exponent / 10), 2);
+    std::__ryu_memcpy(__result + __index, __DIGIT_TABLE + 2 * (_Scientific_exponent / 10), 2);
     __result[__index + 2] = static_cast<char>('0' + __c);
     __index += 3;
   } else {
-    std::memcpy(__result + __index, __DIGIT_TABLE + 2 * _Scientific_exponent, 2);
+    std::__ryu_memcpy(__result + __index, __DIGIT_TABLE + 2 * _Scientific_exponent, 2);
     __index += 2;
   }
 
   return { _First + _Total_scientific_length, errc{} };
 }
 
-[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline bool __d2d_small_int(const uint64_t __ieeeMantissa, const uint32_t __ieeeExponent,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI inline _LIBCPP_CONSTEXPR_SINCE_CXX26 bool __d2d_small_int(const uint64_t __ieeeMantissa, const uint32_t __ieeeExponent,
   __floating_decimal_64* const __v) {
   const uint64_t __m2 = (1ull << __DOUBLE_MANTISSA_BITS) | __ieeeMantissa;
   const int32_t __e2 = static_cast<int32_t>(__ieeeExponent) - __DOUBLE_BIAS - __DOUBLE_MANTISSA_BITS;
@@ -701,7 +709,7 @@ struct __floating_decimal_64 {
   return true;
 }
 
-[[nodiscard]] to_chars_result __d2s_buffered_n(char* const _First, char* const _Last, const double __f,
+[[nodiscard]] _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX26 inline to_chars_result __d2s_buffered_n(char* const _First, char* const _Last, const double __f,
   const chars_format _Fmt) {
 
   // Step 1: Decode the floating-point number, and unify normalized and subnormal cases.
@@ -714,7 +722,7 @@ struct __floating_decimal_64 {
         return { _Last, errc::value_too_large };
       }
 
-      std::memcpy(_First, "0e+00", 5);
+      std::__ryu_memcpy(_First, "0e+00", 5);
 
       return { _First + 5, errc{} };
     }
@@ -782,3 +790,5 @@ struct __floating_decimal_64 {
 _LIBCPP_END_NAMESPACE_STD
 
 // clang-format on
+
+#endif // _LIBCPP___CHARCONV_RYU_D2S_H

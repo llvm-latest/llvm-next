@@ -36,13 +36,18 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-#ifndef _LIBCPP_SRC_INCLUDE_RYU_D2FIXED_FULL_TABLE_H
-#define _LIBCPP_SRC_INCLUDE_RYU_D2FIXED_FULL_TABLE_H
+#ifndef _LIBCPP___CHARCONV_RYU_D2FIXED_FULL_TABLE_H
+#define _LIBCPP___CHARCONV_RYU_D2FIXED_FULL_TABLE_H
 
 // Avoid formatting to keep the changes with the original code minimal.
 // clang-format off
 
 #include <__config>
+#include <cstdint>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#  pragma GCC system_header
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -4448,4 +4453,4 @@ _LIBCPP_END_NAMESPACE_STD
 
 // clang-format on
 
-#endif // _LIBCPP_SRC_INCLUDE_RYU_D2FIXED_FULL_TABLE_H
+#endif // _LIBCPP___CHARCONV_RYU_D2FIXED_FULL_TABLE_H

@@ -16,6 +16,7 @@
 #include <__config>
 #include <__system_error/errc.h>
 #include <__type_traits/enable_if.h>
+#include <__type_traits/is_constant_evaluated.h>
 #include <__type_traits/is_integral.h>
 #include <__type_traits/is_signed.h>
 #include <__type_traits/is_unsigned.h>
@@ -130,6 +131,19 @@ __from_chars_atoi(const char* __first, const char* __last, _Tp& __value) {
 
   return std::__subject_seq_combinator(
       __first, __last, __value, [](const char* __f, const char* __l, _Tp& __val) -> from_chars_result {
+#if __has_builtin(__builtin_from_chars)
+        if (std::__libcpp_is_constant_evaluated()) {
+          // The compiler evaluates this in its own arbitrary-precision arithmetic,
+          // so the conversion does not consume the constant-evaluation step budget.
+          int __ec        = 0;
+          const char* __p = __builtin_from_chars(__f, __l, &__val, 10, &__ec);
+          if (__ec == 0)
+            return {__p, {}};
+          if (__ec == 1)
+            return {__f, errc::invalid_argument};
+          return {__p, errc::result_out_of_range};
+        }
+#endif
         __output_type __a, __b;
         auto __p = __tx::__read(__f, __l, __a, __b);
         if (__p == __l || !std::__in_pattern(*__p)) {
@@ -179,6 +193,17 @@ __from_chars_integral(const char* __first, const char* __last, _Tp& __value, int
       __last,
       __value,
       [](const char* __p, const char* __lastp, _Tp& __val, int __b) -> from_chars_result {
+#if __has_builtin(__builtin_from_chars)
+        if (std::__libcpp_is_constant_evaluated()) {
+          int __ec        = 0;
+          const char* __q = __builtin_from_chars(__p, __lastp, &__val, __b, &__ec);
+          if (__ec == 0)
+            return {__q, {}};
+          if (__ec == 1)
+            return {__p, errc::invalid_argument};
+          return {__q, errc::result_out_of_range};
+        }
+#endif
         using __tl = numeric_limits<_Tp>;
         // __base is always between 2 and 36 inclusive.
         auto __digits = __tl::digits / __from_chars_log2f_lut[__b - 2];
