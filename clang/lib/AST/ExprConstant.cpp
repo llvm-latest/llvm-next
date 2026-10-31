@@ -4807,7 +4807,7 @@ struct ModifySubobjectHandler {
   const Expr *E;
 
   typedef bool result_type;
-  static const AccessKinds AccessKind = AK_Assign;
+  static constexpr AccessKinds AccessKind = AK_Assign;
 
   bool checkConst(QualType QT) {
     // Assigning to a const object has undefined behavior.
@@ -4845,8 +4845,6 @@ struct ModifySubobjectHandler {
   }
 };
 } // end anonymous namespace
-
-const AccessKinds ModifySubobjectHandler::AccessKind;
 
 /// Update the designated sub-object of an rvalue to the given value.
 static bool modifySubobject(EvalInfo &Info, const Expr *E,
@@ -5489,7 +5487,7 @@ struct CompoundAssignSubobjectHandler {
   BinaryOperatorKind Opcode;
   const APValue &RHS;
 
-  static const AccessKinds AccessKind = AK_Assign;
+  static constexpr AccessKinds AccessKind = AK_Assign;
 
   typedef bool result_type;
 
@@ -5630,8 +5628,6 @@ struct CompoundAssignSubobjectHandler {
   }
 };
 } // end anonymous namespace
-
-const AccessKinds CompoundAssignSubobjectHandler::AccessKind;
 
 /// Perform a compound assignment of LVal <op>= RVal.
 static bool handleCompoundAssignment(EvalInfo &Info,
@@ -7445,7 +7441,7 @@ struct StartLifetimeOfUnionMemberHandler {
   const FieldDecl *Field;
   bool DuringInit;
   bool Failed = false;
-  static const AccessKinds AccessKind = AK_Assign;
+  static constexpr AccessKinds AccessKind = AK_Assign;
 
   typedef bool result_type;
   bool failed() { return Failed; }
@@ -7487,14 +7483,12 @@ struct StartLifetimeOfUnionMemberHandler {
 };
 } // end anonymous namespace
 
-const AccessKinds StartLifetimeOfUnionMemberHandler::AccessKind;
-
 namespace {
 /// Implicitly creates an array element that is not within its lifetime (a
 /// union elemental subobject, C++26), as for a union member.
 struct StartLifetimeOfArrayElementHandler {
   EvalInfo &Info;
-  static const AccessKinds AccessKind = AK_Construct;
+  static constexpr AccessKinds AccessKind = AK_Construct;
   bool Failed = false;
   typedef bool result_type;
   bool failed() { return false; }
@@ -8272,7 +8266,7 @@ struct DestroyObjectHandler {
 namespace {
 /// Leaves a union with no active member.
 struct DeactivateUnionHandler {
-  static const AccessKinds AccessKind = AK_Destroy;
+  static constexpr AccessKinds AccessKind = AK_Destroy;
   typedef bool result_type;
   bool failed() { return false; }
   bool found(APValue &Union, QualType, APValue::LValueBase) {
@@ -22897,7 +22891,7 @@ namespace {
 /// it or starting the lifetime of any subobject (P3726R2, [obj.lifetime]).
 struct StartLifetimeHandler {
   EvalInfo &Info;
-  static const AccessKinds AccessKind = AK_Construct;
+  static constexpr AccessKinds AccessKind = AK_Construct;
   typedef bool result_type;
   bool failed() { return false; }
   bool found(APValue &Subobj, QualType SubobjType,
