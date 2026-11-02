@@ -1535,7 +1535,7 @@ static APValue getNthTemplateArgument(ASTContext &C,
       Expr *TExpr = templArgument.getAsExpr();
 
       APValue ArgResult;
-      bool success = Evaluator(ArgResult, TExpr, !TExpr->isLValue());
+      [[maybe_unused]] bool success = Evaluator(ArgResult, TExpr, !TExpr->isLValue());
       assert(success);
 
       return ArgResult.Lift(TExpr->getType());
@@ -8503,7 +8503,7 @@ bool is_accessible(APValue &Result, ASTContext &C, MetaActions &Meta,
   case ReflectionKind::BaseSpecifier: {
     CXXBaseSpecifier *BaseSpec = RV.getReflectedBaseSpecifier();
 
-    auto *Base = findTypeDecl(BaseSpec->getType());
+    [[maybe_unused]] auto *Base = findTypeDecl(BaseSpec->getType());
     assert(Base && "base class has no type declaration?");
 
     QualType BaseTy = BaseSpec->getType();
