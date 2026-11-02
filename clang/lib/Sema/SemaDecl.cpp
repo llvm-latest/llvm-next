@@ -5490,10 +5490,26 @@ Decl *Sema::ParsedFreeStandingDeclSpec(Scope *S, AccessSpecifier AS,
       Diag(DS.getUnalignedSpecLoc(), DiagID) << "__unaligned";
   }
 
+  // C++ [dcl.pre]p7: An attribute-specifier-seq that appears at the
+  // beginning of a simple-declaration appertains to each of the entities
+  // declared by the declarators of the init-declarator-list. Since this is
+  // a free-standing declaration without declarators, an
+  // attribute-specifier-seq that preceded the decl-specifier-seq instead
+  // appertains to the tag declared by the decl-specifier-seq. Apply those
+  // prefix attributes to the tag here.
+  bool AppliedDeclAttrsToTag = false;
+  if (Tag && !DeclAttrs.empty()) {
+    ProcessDeclAttributeList(S, Tag, DeclAttrs);
+    AppliedDeclAttrsToTag = true;
+    if (Tag->isInvalidDecl())
+      return TagD;
+  }
+
   // Warn about ignored type attributes, for example:
   // __attribute__((aligned)) struct A;
   // Attributes should be placed after tag to apply to type declaration.
-  if (!DS.getAttributes().empty() || !DeclAttrs.empty()) {
+  if (!DS.getAttributes().empty() ||
+      (!DeclAttrs.empty() && !AppliedDeclAttrsToTag)) {
     DeclSpec::TST TypeSpecType = DS.getTypeSpecType();
     if (TypeSpecType == DeclSpec::TST_class ||
         TypeSpecType == DeclSpec::TST_struct ||
@@ -5514,7 +5530,8 @@ Decl *Sema::ParsedFreeStandingDeclSpec(Scope *S, AccessSpecifier AS,
       };
 
       llvm::for_each(DS.getAttributes(), EmitAttributeDiagnostic);
-      llvm::for_each(DeclAttrs, EmitAttributeDiagnostic);
+      if (!AppliedDeclAttrsToTag)
+        llvm::for_each(DeclAttrs, EmitAttributeDiagnostic);
     }
   }
 
