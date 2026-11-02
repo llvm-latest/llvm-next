@@ -2003,12 +2003,20 @@ Parser::DeclGroupPtrTy Parser::ParseSimpleDeclaration(
   // C99 6.7.2.3p6: Handle "struct-or-union identifier;", "enum { X };"
   // declaration-specifiers init-declarator-list[opt] ';'
   if (Tok.is(tok::semi)) {
-    ProhibitAttributes(DeclAttrs);
+    // C++ [dcl.pre]p7: If a simple-declaration has no declarators and its
+    // decl-specifier-seq declares a tag, an attribute-specifier-seq that
+    // appears at the beginning of the declaration appertains to the
+    // declared tag rather than being misplaced.
+    const bool AttrsApplyToTag = DeclSpec::isDeclRep(DS.getTypeSpecType());
+    if (!AttrsApplyToTag)
+      ProhibitAttributes(DeclAttrs);
+
     DeclEnd = Tok.getLocation();
     if (RequireSemi) ConsumeToken();
     RecordDecl *AnonRecord = nullptr;
     Decl *TheDecl = Actions.ParsedFreeStandingDeclSpec(
-        getCurScope(), AS_none, DS, ParsedAttributesView::none(), AnonRecord);
+        getCurScope(), AS_none, DS,
+        AttrsApplyToTag ? DeclAttrs : ParsedAttributesView::none(), AnonRecord);
     Actions.ActOnDefinedDeclarationSpecifier(TheDecl);
     DS.complete(TheDecl);
     if (AnonRecord) {

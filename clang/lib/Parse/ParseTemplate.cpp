@@ -205,11 +205,21 @@ Parser::DeclGroupPtrTy Parser::ParseDeclarationAfterTemplate(
                              getDeclSpecContextFromDeclaratorContext(Context));
 
   if (Tok.is(tok::semi)) {
-    ProhibitAttributes(DeclAttrs);
+    // C++ [dcl.pre]p7: If a simple-declaration has no declarators and its
+    // decl-specifier-seq declares a tag, an attribute-specifier-seq that
+    // appears at the beginning of the declaration appertains to the
+    // declared tag rather than being misplaced.
+    const bool AttrsApplyToTag =
+        DeclSpec::isDeclRep(DS.getTypeSpecType()) &&
+        TemplateInfo.Kind != ParsedTemplateKind::ExplicitInstantiation;
+    if (!AttrsApplyToTag)
+      ProhibitAttributes(DeclAttrs);
+
     DeclEnd = ConsumeToken();
     RecordDecl *AnonRecord = nullptr;
     Decl *Decl = Actions.ParsedFreeStandingDeclSpec(
-        getCurScope(), AS, DS, ParsedAttributesView::none(),
+        getCurScope(), AS, DS,
+        AttrsApplyToTag ? DeclAttrs : ParsedAttributesView::none(),
         TemplateInfo.TemplateParams ? *TemplateInfo.TemplateParams
                                     : MultiTemplateParamsArg(),
         TemplateInfo.Kind == ParsedTemplateKind::ExplicitInstantiation,

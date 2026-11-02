@@ -1121,30 +1121,21 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
   // C99 6.7.2.3p6: Handle "struct-or-union identifier;", "enum { X };"
   // declaration-specifiers init-declarator-list[opt] ';'
   if (Tok.is(tok::semi)) {
-    // Suggest correct location to fix '[[attrib]] struct' to 'struct
-    // [[attrib]]'
-    SourceLocation CorrectLocationForAttributes{};
+    // C++ [dcl.pre]p7: An attribute-specifier-seq that appears at the
+    // beginning of a simple-declaration appertains to each of the entities
+    // declared by the declarators of the init-declarator-list. If the
+    // declaration has no declarators and its decl-specifier-seq declares a
+    // tag, the attributes instead appertain to the declared tag.
     TypeSpecifierType TKind = DS.getTypeSpecType();
-    if (DeclSpec::isDeclRep(TKind)) {
-      if (TKind == DeclSpec::TST_enum) {
-        if (const auto *ED = dyn_cast_or_null<EnumDecl>(DS.getRepAsDecl())) {
-          CorrectLocationForAttributes =
-              PP.getLocForEndOfToken(ED->getEnumKeyRange().getEnd());
-        }
-      }
-      if (CorrectLocationForAttributes.isInvalid()) {
-        const auto &Policy = Actions.getASTContext().getPrintingPolicy();
-        unsigned Offset =
-            StringRef(DeclSpec::getSpecifierName(TKind, Policy)).size();
-        CorrectLocationForAttributes =
-            DS.getTypeSpecTypeLoc().getLocWithOffset(Offset);
-      }
-    }
-    ProhibitAttributes(Attrs, CorrectLocationForAttributes);
+    const bool AttrsApplyToTag = DeclSpec::isDeclRep(TKind);
+    if (!AttrsApplyToTag)
+      ProhibitAttributes(Attrs, {});
+
     ConsumeToken();
     RecordDecl *AnonRecord = nullptr;
     Decl *TheDecl = Actions.ParsedFreeStandingDeclSpec(
-        getCurScope(), AS_none, DS, ParsedAttributesView::none(), AnonRecord);
+        getCurScope(), AS_none, DS,
+        AttrsApplyToTag ? Attrs : ParsedAttributesView::none(), AnonRecord);
     DS.complete(TheDecl);
     Actions.ActOnDefinedDeclarationSpecifier(TheDecl);
     if (AnonRecord) {
