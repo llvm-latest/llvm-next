@@ -194,10 +194,3 @@ void Preprocessor::ReplacePreviousCachedToken(ArrayRef<Token> NewToks) {
   CachedLexPos += NewToks.size() - 1;
 }
 
-void Preprocessor::RemoveNextCachedToken(unsigned N) {
-  assert(N != 0 && "Expected the number of tokens to remove");
-  assert(CachedLexPos != 0 && "Expected to have some cached tokens");
-  assert(CachedLexPos + N > CachedTokens.size() && "Confused caching.");
-  CachedTokens.erase(CachedTokens.begin() + CachedLexPos,
-                     CachedTokens.begin() + CachedLexPos + N);
-}

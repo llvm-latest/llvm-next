@@ -42,6 +42,34 @@
 
 using namespace clang;
 
+namespace {
+/// Silence diagnostics for the *speculative* part of a C++26 class-name
+/// annotation parse.
+///
+/// The earlier speculative implementation wrapped the whole annotation
+/// expression in setSuppressAllDiagnostics() and restored it with a
+/// hard-coded `false`. That swallowed real construction errors and did not
+/// preserve a caller's suppression state. Here suppression is limited to the
+/// name-lookup probe, which is the only place that can emit "unknown
+/// attribute ... ignored" / "attribute is ignored" warnings for a name we are
+/// about to replace with an annotation. It is always restored on scope exit -
+/// including the revert path, where the ordinary attribute diagnostics must
+/// reappear - and construction errors are deliberately left enabled.
+class SuppressProbeDiagnostics {
+  DiagnosticsEngine &Diags;
+  bool PrevSuppress;
+
+public:
+  explicit SuppressProbeDiagnostics(DiagnosticsEngine &Diags)
+      : Diags(Diags), PrevSuppress(Diags.getSuppressAllDiagnostics()) {
+    Diags.setSuppressAllDiagnostics(true);
+  }
+  ~SuppressProbeDiagnostics() {
+    Diags.setSuppressAllDiagnostics(PrevSuppress);
+  }
+};
+} // namespace
+
 Parser::DeclGroupPtrTy Parser::ParseNamespace(DeclaratorContext Context,
                                               SourceLocation &DeclEnd,
                                               SourceLocation InlineLoc) {
@@ -5242,8 +5270,12 @@ void Parser::ParseCXX11AttributeSpecifierInternal(ParsedAttributes &Attrs,
   checkCompoundToken(OpenLoc, tok::l_square, CompoundToken::AttrBegin);
   ConsumeBracket();
 
+  // C++26 annotations are an opt-in experimental feature (P3394), enabled
+  // by -freflection. Keep the guard from the original implementation: an
+  // attribute-specifier-seq beginning with '=' is an annotation only in
+  // that mode.
   bool AllowAnnotations = getLangOpts().AnnotationAttributes &&
-                         Tok.is(tok::equal);
+                          Tok.is(tok::equal);
 
   SourceLocation CommonScopeLoc;
   IdentifierInfo *CommonScopeName = nullptr;
@@ -5279,6 +5311,113 @@ void Parser::ParseCXX11AttributeSpecifierInternal(ParsedAttributes &Attrs,
     // Eat all remaining superfluous commas before parsing the next attribute.
     while (TryConsumeToken(tok::comma))
       ;
+
+    // A C++26 annotation may name a class type with a nested-name-specifier:
+    //   [[ns::Foo]] / [[::ns::Foo]] / [[ns::Foo(1, 2)]]
+    // Resolve the qualified name through the standard type-annotation
+    // machinery (which handles scope lookup for us) and build the
+    // constructed temporary as the annotation value. A single tentative
+    // parse keeps the failure path clean: no token injection, no blanket
+    // suppression of construction diagnostics, no stray '(' ')' left in the
+    // stream. Diagnostics are silenced only for the name-lookup probe.
+    // Skip the probe for ordinary scoped attributes (`clang::...`, `gnu::...`
+    // etc.): those scopes are attribute namespaces, not C++ namespaces, and
+    // resolving them as a nested-name-specifier would emit spurious
+    // "undeclared identifier" diagnostics.
+    bool IsKnownAttributeScope = false;
+    if (Tok.is(tok::identifier) && NextToken().is(tok::coloncolon)) {
+      // GetLookAheadToken(N) peeks N tokens past the current one (N=1 is
+      // NextToken()), so the attribute name after "scope ::" is N=2.
+      Token AfterScope = GetLookAheadToken(2);
+      if (AfterScope.is(tok::identifier) && AfterScope.getIdentifierInfo() &&
+          hasAttribute(AttributeCommonInfo::Syntax::AS_CXX11,
+                       Tok.getIdentifierInfo(), AfterScope.getIdentifierInfo(),
+                       getTargetInfo(), getLangOpts()))
+        IsKnownAttributeScope = true;
+    }
+
+    if (getLangOpts().AnnotationAttributes && !CommonScopeName &&
+        !IsKnownAttributeScope &&
+        (Tok.is(tok::identifier) || Tok.is(tok::coloncolon))) {
+      TentativeParsingAction ScopedTPA(*this);
+      // The name-lookup probe is allowed to fail (an unresolved scope/type
+      // name is expected), so silence its diagnostics - including the
+      // "unknown/ignored attribute" warnings that would otherwise leak for a
+      // name we are about to replace with an annotation. The RAII restores
+      // the previous state on every path: on revert the ordinary attribute
+      // path must still emit its diagnostics, and construction errors after
+      // the probe are deliberately left enabled.
+      bool AnnotationFailed;
+      {
+        SuppressProbeDiagnostics SilenceProbe(Diags);
+        AnnotationFailed = TryAnnotateTypeOrScopeToken();
+      }
+      if (!AnnotationFailed && Tok.is(tok::annot_typename)) {
+        ParsedType ScopedTy = getTypeAnnotation(Tok).get();
+        SourceLocation TypeBegin = Tok.getLocation();
+        SourceLocation TypeEnd = Tok.getAnnotationEndLoc();
+        ConsumeAnnotationToken();
+
+        ExprResult ScopedValue;
+        bool ScopedAttempted = false;
+        if (Tok.is(tok::l_paren)) {
+          ScopedAttempted = true;
+          BalancedDelimiterTracker T(*this, tok::l_paren);
+          T.consumeOpen();
+          ExprVector Exprs;
+          bool Invalid = Tok.isNot(tok::r_paren) && ParseExpressionList(Exprs);
+          T.consumeClose();
+          if (!Invalid)
+            ScopedValue = Actions.ActOnCXXTypeConstructExpr(
+                ScopedTy, T.getOpenLocation(), Exprs, T.getCloseLocation(),
+                /*ListInitialization=*/false);
+        } else if (Tok.is(tok::l_brace) && getLangOpts().CPlusPlus11) {
+          ScopedAttempted = true;
+          ExprResult Init = ParseBraceInitializer();
+          if (!Init.isInvalid()) {
+            Expr *InitList = Init.get();
+            ScopedValue = Actions.ActOnCXXTypeConstructExpr(
+                ScopedTy, InitList->getBeginLoc(), MultiExprArg(&InitList, 1),
+                InitList->getEndLoc(), /*ListInitialization=*/true);
+          }
+        } else if (Tok.isOneOf(tok::comma, tok::r_square, tok::semi,
+                               tok::eof, tok::r_splice)) {
+          ScopedAttempted = true;
+          ScopedValue = Actions.ActOnCXXTypeConstructExpr(
+              ScopedTy, TypeBegin, MultiExprArg(), TypeEnd,
+              /*ListInitialization=*/true);
+        }
+
+        if (ScopedAttempted) {
+          IdentifierTable &IT = Actions.PP.getIdentifierTable();
+          IdentifierInfo &Placeholder = IT.get("__annotation_placeholder");
+          ParsedAttr *NewAttr;
+          if (!ScopedValue.isInvalid() &&
+              !ScopedValue.get()->containsErrors()) {
+            ArgsVector ArgExprs;
+            ArgExprs.push_back(ScopedValue.get());
+            NewAttr = Attrs.addNew(&Placeholder, TypeBegin, {},
+                                   ArgExprs.data(), 1,
+                                   ParsedAttr::Form::Annotation());
+            if (EndLoc)
+              *EndLoc = ScopedValue.get()->getEndLoc();
+          } else {
+            // Construction failed; Sema already emitted the real diagnostic.
+            // Keep an invalid annotation marker so the prefix-attribute path
+            // does not add a redundant "misplaced attributes" error.
+            NewAttr = Attrs.addNew(&Placeholder, TypeBegin, {}, nullptr, 0,
+                                   ParsedAttr::Form::Annotation());
+            NewAttr->setInvalid();
+            if (EndLoc)
+              *EndLoc = TypeEnd;
+          }
+          ScopedTPA.Commit();
+          AttrParsed = true;
+          continue;
+        }
+      }
+      ScopedTPA.Revert();
+    }
 
     SourceLocation ScopeLoc, AttrLoc;
     IdentifierInfo *ScopeName = nullptr, *AttrName = nullptr;
@@ -5348,78 +5487,7 @@ void Parser::ParseCXX11AttributeSpecifierInternal(ParsedAttributes &Attrs,
                                            ScopeName, ScopeLoc, OpenMPTokens);
 
     if (!AttrParsed) {
-      // NOTE: Make the unknown attribute as an C++ 26 annotation
-      if (getLangOpts().AnnotationAttributes) {
-        static constexpr auto IsBuiltInAttribute =
-            +[](IdentifierInfo *AttrName, IdentifierInfo *ScopeName) {
-              AttributeCommonInfo::Kind Kind = ParsedAttr::getParsedKind(
-                  AttrName, ScopeName, ParsedAttr::AS_CXX11);
-              return Kind != AttributeCommonInfo::UnknownAttribute;
-            };
-
-        if (ScopeName == nullptr && !IsBuiltInAttribute(AttrName, ScopeName)) {
-          auto TryParseAnnotation = [this, &Attrs, &EndLoc](bool InsertParens) {
-            SourceLocation EqLoc = Tok.getLocation();
-            TentativeParsingAction TPA(*this, InsertParens);
-
-            // insert '(' and ')' tokens at the current position
-            if (InsertParens) {
-              Token Toks[2];
-              Token &Tok1 = Toks[0];
-              Tok1.startToken();
-              Tok1.setKind(tok::l_paren);
-              Token &Tok2 = Toks[1];
-              Tok2.startToken();
-              Tok2.setKind(tok::r_paren);
-              PP.EnterTokens(Toks, true);
-            }
-
-            Actions.DisableTypoCorrection = true;
-            Diags.setSuppressAllDiagnostics(true);
-            ExprResult AnnotExpr = ParseConstantExpression();
-            Diags.setSuppressAllDiagnostics(false);
-            Actions.DisableTypoCorrection = false;
-
-            if (!AnnotExpr.isInvalid() && !AnnotExpr.get()->containsErrors()) {
-              TPA.Commit();
-              IdentifierTable &IT = Actions.PP.getIdentifierTable();
-              IdentifierInfo &Placeholder = IT.get("__annotation_placeholder");
-
-              ArgsVector ArgExprs;
-              ArgExprs.push_back(AnnotExpr.get());
-              Attrs.addNew(&Placeholder, EqLoc, {}, ArgExprs.data(), 1,
-                           ParsedAttr::Form::Annotation());
-
-              if (EndLoc)
-                *EndLoc = AnnotExpr.get()->getEndLoc();
-
-              return true;
-            } else {
-              if (InsertParens) {
-                TPA.Commit();
-                return false;
-              }
-
-              TPA.Revert();
-              return false;
-            }
-          };
-
-          TPA.Revert();
-          assert(Tok.is(tok::identifier) && "Expected an identifier");
-
-          if (TryParseAnnotation(/*InsertParens=*/false))
-            continue;
-
-          if (TryParseAnnotation(/*InsertParens=*/true))
-            continue;
-        } else {
-          TPA.Commit();
-        }
-      } else {
-        TPA.Commit();
-      }
-
+      TPA.Commit();
       Attrs.addNew(AttrName,
                    SourceRange(ScopeLoc.isValid() && CommonScopeLoc.isInvalid()
                                    ? ScopeLoc
