@@ -5497,6 +5497,12 @@ Decl *Sema::ParsedFreeStandingDeclSpec(Scope *S, AccessSpecifier AS,
   // attribute-specifier-seq that preceded the decl-specifier-seq instead
   // appertains to the tag declared by the decl-specifier-seq. Apply those
   // prefix attributes to the tag here.
+  // Local extension: the parser forwards every non-empty prefix
+  // attribute-specifier-seq here, so ordinary attributes, C++26 annotations
+  // and mixtures of both all appertain to the tag. Specifiers on a
+  // non-tag declaration were already diagnosed by ProhibitAttributes and are
+  // forwarded as an empty view. The "ignored declspec attribute" warning
+  // below is therefore reserved for attributes on the decl-specifier-seq.
   bool AppliedDeclAttrsToTag = false;
   if (Tag && !DeclAttrs.empty()) {
     ProcessDeclAttributeList(S, Tag, DeclAttrs);

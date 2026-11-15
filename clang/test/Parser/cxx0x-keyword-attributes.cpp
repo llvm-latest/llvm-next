@@ -56,10 +56,10 @@ class ATTR_USE class_attr {}; // expected-error {{'ATTR_NAME' only applies to no
 union ATTR_USE union_attr; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 enum ATTR_USE E { }; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 namespace test_misplacement {
-ATTR_USE struct struct_attr2;  // expected-error {{misplaced 'ATTR_NAME'}}
-ATTR_USE class class_attr2; // expected-error {{misplaced 'ATTR_NAME'}}
-ATTR_USE union union_attr2; // expected-error {{misplaced 'ATTR_NAME'}}
-ATTR_USE enum  E2 { }; // expected-error {{misplaced 'ATTR_NAME'}}
+ATTR_USE struct struct_attr2;  // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
+ATTR_USE class class_attr2; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
+ATTR_USE union union_attr2; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
+ATTR_USE enum  E2 { }; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 }
 
 // Checks attributes placed at wrong syntactic locations of class specifiers.
@@ -92,11 +92,11 @@ class after_class_close {} ATTR_USE; // expected-error {{'ATTR_NAME' cannot appe
 class C {};
 
 ATTR_USE struct with_init_declarators {} init_declarator; // expected-error {{'ATTR_NAME' only applies to function types}}
-ATTR_USE struct no_init_declarators; // expected-error {{misplaced 'ATTR_NAME'}}
-template<typename> ATTR_USE struct no_init_declarators_template; // expected-error {{'ATTR_NAME' cannot appear here}}
+ATTR_USE struct no_init_declarators; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
+template<typename> ATTR_USE struct no_init_declarators_template; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 void fn_with_structs() {
   ATTR_USE struct with_init_declarators {} init_declarator; // expected-error {{'ATTR_NAME' only applies to function types}}
-  ATTR_USE struct no_init_declarators; // expected-error {{'ATTR_NAME' cannot appear here}}
+  ATTR_USE struct no_init_declarators; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 }
 ATTR_USE; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 struct ctordtor {

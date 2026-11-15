@@ -12,7 +12,7 @@ enum ATTR_USE E { // expected-error {{'ATTR_NAME' only applies to non-K&R-style 
 };
 
 enum ATTR_USE { Four }; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
-ATTR_USE enum E2 { Five }; // expected-error {{misplaced 'ATTR_NAME'}}
+ATTR_USE enum E2 { Five }; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 
 // FIXME: this diagnostic can be improved.
 enum { ATTR_USE Six }; // expected-error {{expected identifier}}
@@ -34,7 +34,7 @@ struct ATTR_USE S1 { // expected-error {{'ATTR_NAME' only applies to non-K&R-sty
             // expected-warning {{declaration does not declare anything}}
 };
 
-ATTR_USE struct S2 { int a; }; // expected-error {{misplaced 'ATTR_NAME'}}
+ATTR_USE struct S2 { int a; }; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 struct S3 ATTR_USE { int a; }; // expected-error {{'ATTR_NAME' cannot appear here}} \
                                          expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 
@@ -43,7 +43,7 @@ union ATTR_USE U { // expected-error {{'ATTR_NAME' only applies to non-K&R-style
   ATTR_USE int i; // expected-error {{'ATTR_NAME' only applies to function types; type here is 'int'}}
 };
 
-ATTR_USE union U2 { double d; }; // expected-error {{misplaced 'ATTR_NAME'}}
+ATTR_USE union U2 { double d; }; // expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 union U3 ATTR_USE { double d; }; // expected-error {{'ATTR_NAME' cannot appear here}} \
                                            expected-error {{'ATTR_NAME' only applies to non-K&R-style functions}}
 

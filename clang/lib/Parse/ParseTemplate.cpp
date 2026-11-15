@@ -209,10 +209,15 @@ Parser::DeclGroupPtrTy Parser::ParseDeclarationAfterTemplate(
     // decl-specifier-seq declares a tag, an attribute-specifier-seq that
     // appears at the beginning of the declaration appertains to the
     // declared tag rather than being misplaced.
-    const bool AttrsApplyToTag =
+    // Local extension: any non-empty prefix attribute-specifier-seq
+    // appertains to the declared tag (ordinary attributes, C++26
+    // annotations, or a mix), with no "misplaced attributes" diagnostic or
+    // fix-it hint for normal use.
+    const bool IsTagDecl =
         DeclSpec::isDeclRep(DS.getTypeSpecType()) &&
         TemplateInfo.Kind != ParsedTemplateKind::ExplicitInstantiation;
-    if (!AttrsApplyToTag)
+    const bool AttrsApplyToTag = IsTagDecl && !DeclAttrs.empty();
+    if (!IsTagDecl)
       ProhibitAttributes(DeclAttrs);
 
     DeclEnd = ConsumeToken();
@@ -224,6 +229,8 @@ Parser::DeclGroupPtrTy Parser::ParseDeclarationAfterTemplate(
                                     : MultiTemplateParamsArg(),
         TemplateInfo.Kind == ParsedTemplateKind::ExplicitInstantiation,
         AnonRecord);
+    if (AttrsApplyToTag)
+      DeclAttrs.clearListOnly();
     Actions.ActOnDefinedDeclarationSpecifier(Decl);
     assert(!AnonRecord &&
            "Anonymous unions/structs should not be valid with template");

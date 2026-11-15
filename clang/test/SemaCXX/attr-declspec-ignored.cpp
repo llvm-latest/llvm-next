@@ -30,21 +30,21 @@ namespace test1 {
     __attribute__((visibility("hidden")))  __attribute__((aligned)) enum struct ES {}; // expected-warning{{attribute 'visibility' is ignored, place it after "enum struct" to apply attribute to type declaration}} \
     // expected-warning{{attribute 'aligned' is ignored, place it after "enum struct" to apply attribute to type declaration}}
 
-    // Also test [[]] attribute syntax. (On a non-nested declaration, these
-    // generate a hard "misplaced attributes" error, which we test for
-    // elsewhere.)
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] class E; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "class" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "class" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] struct F; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "struct" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "struct" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] union G; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "union" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "union" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum H {H}; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "enum" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "enum" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum class I {}; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "enum class" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "enum class" to apply attribute to type declaration}}
-    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum struct J {}; // expected-warning{{attribute 'gnu::visibility' is ignored, place it after "enum struct" to apply attribute to type declaration}} \
-    // expected-warning{{attribute 'gnu::aligned' is ignored, place it after "enum struct" to apply attribute to type declaration}}
+    // Also test [[]] attribute syntax. Prefix attribute-specifier-seqs now
+    // appertain to the tag, so these produce neither a "misplaced attributes"
+    // error nor an "ignored, place it after ..." warning.
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] class E; // no diagnostic
+    // (line kept to preserve relative verify directives below)
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] struct F; // no diagnostic
+    // (line kept to preserve relative verify directives below)
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] union G; // no diagnostic
+    // (line kept to preserve relative verify directives below)
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum H {H}; // no diagnostic
+    // (line kept to preserve relative verify directives below)
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum class I {}; // no diagnostic
+    // (line kept to preserve relative verify directives below)
+    [[gnu::visibility("hidden")]]  [[gnu::aligned]] enum struct J {}; // no diagnostic
+    // (line kept to preserve relative verify directives below)
   };
 }
 

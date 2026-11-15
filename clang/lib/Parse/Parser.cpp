@@ -1126,16 +1126,26 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
     // declared by the declarators of the init-declarator-list. If the
     // declaration has no declarators and its decl-specifier-seq declares a
     // tag, the attributes instead appertain to the declared tag.
+    // Local extension: any non-empty prefix attribute-specifier-seq
+    // appertains to the declared tag, whether it holds ordinary attributes,
+    // C++26 annotations, or a mix. Normal use therefore emits neither
+    // "misplaced attributes" nor a fix-it hint. Only declarations whose
+    // decl-specifier-seq does not declare a tag keep the standard diagnostic.
     TypeSpecifierType TKind = DS.getTypeSpecType();
-    const bool AttrsApplyToTag = DeclSpec::isDeclRep(TKind);
-    if (!AttrsApplyToTag)
-      ProhibitAttributes(Attrs, {});
+    const bool IsTagDecl = DeclSpec::isDeclRep(TKind);
+    const bool AttrsApplyToTag = IsTagDecl && !Attrs.empty();
+    if (!IsTagDecl)
+      ProhibitAttributes(Attrs);
 
     ConsumeToken();
     RecordDecl *AnonRecord = nullptr;
     Decl *TheDecl = Actions.ParsedFreeStandingDeclSpec(
         getCurScope(), AS_none, DS,
         AttrsApplyToTag ? Attrs : ParsedAttributesView::none(), AnonRecord);
+    // The attributes have been consumed by the tag; don't leave them in the
+    // list for any outer statement-level attribute handling.
+    if (AttrsApplyToTag)
+      Attrs.clearListOnly();
     DS.complete(TheDecl);
     Actions.ActOnDefinedDeclarationSpecifier(TheDecl);
     if (AnonRecord) {

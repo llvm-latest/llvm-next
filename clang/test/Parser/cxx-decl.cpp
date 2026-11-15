@@ -193,7 +193,7 @@ namespace PR15017 {
 }
 
 // Ensure we produce at least some diagnostic for attributes in C++98.
-[[]] struct S; // expected-error {{misplaced attributes}}
+[[]] struct S; // prefix [[]] appertains to the tag; no misplaced diagnostic
 #if __cplusplus < 201103L
 // expected-error@-2 {{[[]] attributes are a C++11 extension}}
 #endif

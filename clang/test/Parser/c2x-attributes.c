@@ -8,7 +8,7 @@ enum [[]] E {
 };
 
 enum [[]] { Four };
-[[]] enum E2 { Five }; // expected-error {{misplaced attributes}}
+[[]] enum E2 { Five }; // prefix [[]] appertains to the tag; no misplaced diagnostic
 
 // FIXME: this diagnostic can be improved.
 enum { [[]] Six }; // expected-error {{expected identifier}}
@@ -45,7 +45,7 @@ struct [[]] S1 {
             // expected-warning {{declaration does not declare anything}}
 };
 
-[[]] struct S2 { int a; }; // expected-error {{misplaced attributes}}
+[[]] struct S2 { int a; }; // prefix [[]] appertains to the tag; no misplaced diagnostic
 struct S3 [[]] { int a; }; // expected-error {{an attribute list cannot appear here}}
 
 union [[]] U {
@@ -53,7 +53,7 @@ union [[]] U {
   [[]] int i;
 };
 
-[[]] union U2 { double d; }; // expected-error {{misplaced attributes}}
+[[]] union U2 { double d; }; // prefix [[]] appertains to the tag; no misplaced diagnostic
 union U3 [[]] { double d; }; // expected-error {{an attribute list cannot appear here}}
 
 struct [[]] IncompleteStruct;

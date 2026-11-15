@@ -2007,8 +2007,15 @@ Parser::DeclGroupPtrTy Parser::ParseSimpleDeclaration(
     // decl-specifier-seq declares a tag, an attribute-specifier-seq that
     // appears at the beginning of the declaration appertains to the
     // declared tag rather than being misplaced.
-    const bool AttrsApplyToTag = DeclSpec::isDeclRep(DS.getTypeSpecType());
-    if (!AttrsApplyToTag)
+    // Local extension: any non-empty prefix attribute-specifier-seq
+    // appertains to the declared tag, whether it contains ordinary
+    // attributes, C++26 annotations, or both. Normal use therefore emits
+    // neither "misplaced attributes" nor a fix-it hint. When the
+    // decl-specifier-seq does not declare a tag the standard diagnostic
+    // path still applies.
+    const bool IsTagDecl = DeclSpec::isDeclRep(DS.getTypeSpecType());
+    const bool AttrsApplyToTag = IsTagDecl && !DeclAttrs.empty();
+    if (!IsTagDecl)
       ProhibitAttributes(DeclAttrs);
 
     DeclEnd = Tok.getLocation();
@@ -2017,6 +2024,11 @@ Parser::DeclGroupPtrTy Parser::ParseSimpleDeclaration(
     Decl *TheDecl = Actions.ParsedFreeStandingDeclSpec(
         getCurScope(), AS_none, DS,
         AttrsApplyToTag ? DeclAttrs : ParsedAttributesView::none(), AnonRecord);
+    // The attributes now appertain to the tag. In block scope DeclAttrs is
+    // the statement's attribute list, so consume them to keep them from being
+    // applied to the enclosing statement as well.
+    if (AttrsApplyToTag)
+      DeclAttrs.clearListOnly();
     Actions.ActOnDefinedDeclarationSpecifier(TheDecl);
     DS.complete(TheDecl);
     if (AnonRecord) {

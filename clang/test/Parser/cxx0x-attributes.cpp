@@ -66,11 +66,11 @@ struct [[]] struct_attr;
 class [[]] class_attr {};
 union [[]] union_attr;
 enum [[]] E { };
-namespace test_misplacement {
-[[]] struct struct_attr2;  //expected-error{{misplaced attributes}}
-[[]] class class_attr2; //expected-error{{misplaced attributes}}
-[[]] union union_attr2; //expected-error{{misplaced attributes}}
-[[]] enum  E2 { }; //expected-error{{misplaced attributes}}
+namespace test_prefix_attrs { // prefix [[]] appertains to the tag; empty [[]] is a silent no-op
+[[]] struct struct_attr2;  // no diagnostic
+[[]] class class_attr2; // no diagnostic
+[[]] union union_attr2; // no diagnostic
+[[]] enum  E2 { }; // no diagnostic
 }
 
 __attribute__(()) alignas(int) int xx; // expected-none
@@ -123,11 +123,11 @@ class C final [[deprecated(l]] {}); //expected-error {{expected string literal a
 class D final alignas ([l) {}]{}); // expected-error {{expected ',' or ']' in lambda capture list}} expected-error {{an attribute list cannot appear here}}
 
 [[]] struct with_init_declarators {} init_declarator;
-[[]] struct no_init_declarators; // expected-error {{misplaced attributes}}
-template<typename> [[]] struct no_init_declarators_template; // expected-error {{an attribute list cannot appear here}}
+[[]] struct no_init_declarators; // no diagnostic
+template<typename> [[]] struct no_init_declarators_template; // no diagnostic
 void fn_with_structs() {
   [[]] struct with_init_declarators {} init_declarator;
-  [[]] struct no_init_declarators; // expected-error {{an attribute list cannot appear here}}
+  [[]] struct no_init_declarators; // no diagnostic
 }
 [[]];
 struct ctordtor {
@@ -477,4 +477,4 @@ namespace P2361 {
 [[nodiscard("\123")]] int b(); // expected-error{{invalid escape sequence '\123' in an unevaluated string literal}}
 }
 
-alignas(int) struct AlignAsAttribute {}; // expected-error {{misplaced attributes; expected attributes here}}
+alignas(int) struct AlignAsAttribute {}; // no misplaced diagnostic; prefix alignas appertains to the tag
