@@ -1927,7 +1927,7 @@ private:
       return CachedLocalOrUnnamed;
     }
   };
-  enum { NumTypeBits = 8 + llvm::BitWidth<TypeDependence> + 7 };
+  enum { NumTypeBits = 8 + llvm::BitWidth<TypeDependence> + 6 };
 
 protected:
   // These classes allow subclasses to somewhat cleanly pack bitfields
@@ -1977,8 +1977,8 @@ protected:
   };
 
 public:
-  static constexpr int FunctionTypeNumParamsWidth = 15;
-  static constexpr int FunctionTypeNumParamsLimit = (1 << 15) - 1;
+  static constexpr int FunctionTypeNumParamsWidth = 16;
+  static constexpr int FunctionTypeNumParamsLimit = (1 << 16) - 1;
 
 protected:
   /// FunctionTypeBitfields store various bits belonging to FunctionProtoType.
